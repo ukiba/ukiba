@@ -1,6 +1,9 @@
-// The default settings of the projects
-ThisBuild / scalaVersion := "3.4.2"
+// The default settings
+// Defining `ThisBuild / scalaVersion` avoids sbt-updates 0.6.3 to report update for scala-library
+ThisBuild / scalaVersion := "3.6.4"  
 ThisBuild / scalacOptions ++= Seq(
+  "-Xmax-inlines", "64",
+
   // the default settings from https://scastie.scala-lang.org
   "-deprecation",
   "-feature",
@@ -11,11 +14,16 @@ ThisBuild / scalacOptions ++= Seq(
 ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / organization := "jp.ukiba"
 
+// use Seq rather than ThisBuild for the default
+// https://www.scala-sbt.org/1.x/docs/Multi-Project.html
 lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
-    "org.scalameta" %%% "munit" % "1.0.0" % Test,
-    "org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.23.1" % Test,
+    "org.typelevel" %% "log4cats-slf4j" % "2.7.0" % Test,
+    "org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.24.3" % Test,
   ),
+
+  run / fork := true,
+  run / baseDirectory := file("."),
 )
 
 lazy val buildInfoSettings = Seq(
@@ -26,19 +34,68 @@ lazy val buildInfoSettings = Seq(
   )
 )
 
-lazy val root = crossProject(JSPlatform, JVMPlatform)
+lazy val ukiba = crossProject(JSPlatform, JVMPlatform).in(file("build/ukiba"))
   .settings(
-  ).aggregate(
+  ).dependsOn(
+    ko_openai,
+    ko_ffmpeg,
+    ko_pdfbox,
     ko_http4s,
     ko_fs2,
     ko_cats_effect,
+    ko_html,
     ko_cats,
 
-    asn1,
     ko_scodec_bits,
     ko_java,
     build,
   )
+
+lazy val ko_openai = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_openai"))
+  .settings(
+    commonSettings,
+    buildInfoSettings,
+    buildInfoPackage := "jp.ukiba.koneko.ko_openai",
+
+    libraryDependencies ++= Seq(
+      "org.http4s" %%% "http4s-circe" % "1.0.0-M44",
+      "io.circe" %%% "circe-generic" % "0.14.10", // json
+    ),
+  ).dependsOn(ko_http4s)
+  .enablePlugins(BuildInfoPlugin)
+
+lazy val ko_ffmpeg = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_ffmpeg"))
+  .settings(
+    commonSettings,
+    buildInfoSettings,
+    buildInfoPackage := "jp.ukiba.koneko.ko_ffmpeg",
+
+    libraryDependencies ++= Seq(
+      // https://github.com/bytedeco/javacpp-presets/tree/master/ffmpeg
+      // "org.bytedeco" % "ffmpeg-platform" % "7.1-1.5.11", // for all the platforms, including android and ios
+      "org.bytedeco" % "ffmpeg" % "7.1-1.5.11", // shared classes
+      "org.bytedeco" % "ffmpeg" % "7.1-1.5.11"
+           classifier "linux-arm64" // armhf for 32bit
+           //classifier "linux-x86_64"
+           //classifier "windows-x86_64"
+           classifier "macosx-arm64",
+    ),
+  ).dependsOn(ko_fs2)
+  .enablePlugins(BuildInfoPlugin)
+
+lazy val ko_pdfbox = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_pdfbox"))
+  .settings(
+    commonSettings,
+    buildInfoSettings,
+    buildInfoPackage := "jp.ukiba.koneko.ko_pdfbox",
+
+    libraryDependencies ++= Seq(
+      "org.apache.pdfbox" % "pdfbox" % "3.0.4"
+        exclude("commons-logging", "commons-logging"),
+      "org.slf4j" % "jcl-over-slf4j" % "1.7.36",
+    ),
+  ).dependsOn(ko_fs2)
+  .enablePlugins(BuildInfoPlugin)
 
 lazy val ko_http4s = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_http4s"))
   .settings(
@@ -47,9 +104,18 @@ lazy val ko_http4s = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_ht
     buildInfoPackage := "jp.ukiba.koneko.ko_http4s",
 
     libraryDependencies ++= Seq(
-      "org.scodec" %%% "scodec-bits" % "1.2.0",
+      "org.http4s" %%% "http4s-dsl"          % "1.0.0-M44",
+      "org.http4s" %%% "http4s-client"       % "1.0.0-M44",
+      "org.http4s" %%% "http4s-ember-client" % "1.0.0-M44" % Test,
+      "org.http4s" %%% "http4s-circe"        % "1.0.0-M44" % Test,
+      "io.circe" %%% "circe-generic" % "0.14.10" % Test,
+      "io.circe" %%% "circe-parser"  % "0.14.10" % Test,
     ),
-  ).dependsOn(ko_fs2)
+  ).jsSettings(
+    libraryDependencies ++= Seq(
+      "com.armanbilge" %%% "fs2-dom" % "0.3.0-M1",
+    ),
+  ).dependsOn(ko_fs2, ko_munit % "test")
   .enablePlugins(BuildInfoPlugin)
 
 lazy val ko_fs2 = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_fs2"))
@@ -59,9 +125,9 @@ lazy val ko_fs2 = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_fs2")
     buildInfoPackage := "jp.ukiba.koneko.ko_fs2",
 
     libraryDependencies ++= Seq(
-      "co.fs2" %%% "fs2-core" % "3.10.2",
+      "co.fs2" %%% "fs2-io" % "3.11.0",
     ),
-  ).dependsOn(ko_cats_effect, ko_scodec_bits)
+  ).dependsOn(ko_cats_effect, ko_scodec_bits, ko_munit % "test")
   .enablePlugins(BuildInfoPlugin)
 
 lazy val ko_cats_effect = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_cats_effect"))
@@ -71,9 +137,39 @@ lazy val ko_cats_effect = crossProject(JSPlatform, JVMPlatform).in(file("koneko/
     buildInfoPackage := "jp.ukiba.koneko.ko_cats_effect",
 
     libraryDependencies ++= Seq(
-      "org.typelevel" %%% "cats-effect" % "3.5.4",
+      "org.typelevel" %%% "cats-effect" % "3.5.7",
       "org.typelevel" %%% "log4cats-core" % "2.7.0", // there are alternative logging libraries
     ),
+  ).dependsOn(ko_cats, ko_munit % "test")
+  .enablePlugins(BuildInfoPlugin)
+
+// some classes could be factored out into koinu/ko_munit later
+lazy val ko_munit = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_munit"))
+  .settings(
+    commonSettings,
+    buildInfoSettings,
+    buildInfoPackage := "jp.ukiba.koneko.ko_munit",
+
+    libraryDependencies ++= Seq(
+      "org.scalameta" %%% "munit" % "1.1.0",
+      "org.typelevel" %%% "munit-cats-effect" % "2.0.0",
+      "org.typelevel" %%% "log4cats-testing" % "2.7.0",
+    ),
+  ).dependsOn(ko_cats)
+  .enablePlugins(BuildInfoPlugin)
+
+lazy val ko_html = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_html"))
+  .settings(
+    commonSettings,
+    buildInfoSettings,
+    buildInfoPackage := "jp.ukiba.koneko.ko_html",
+
+    libraryDependencies ++= Seq(
+      "org.typelevel" %%% "cats-parse" % "1.1.0",
+    ),
+  )
+  .jsSettings(
+    jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv(),
   ).dependsOn(ko_cats)
   .enablePlugins(BuildInfoPlugin)
 
@@ -84,18 +180,9 @@ lazy val ko_cats = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_cats
     buildInfoPackage := "jp.ukiba.koneko.ko_cats",
 
     libraryDependencies ++= Seq(
-      "org.typelevel" %%% "cats-core" % "2.10.0",
+      "org.typelevel" %%% "cats-core" % "2.13.0",
     ),
   ).dependsOn(ko_java)
-  .enablePlugins(BuildInfoPlugin)
-
-// TODO probably factor out to a separate repository
-lazy val asn1 = crossProject(JSPlatform, JVMPlatform).in(file("koinu/asn1")).in(file("koinu/ko_cats"))
-  .settings(
-    commonSettings,
-    buildInfoSettings,
-    buildInfoPackage := "jp.ukiba.koinu.asn1",
-  ).dependsOn(ko_scodec_bits)
   .enablePlugins(BuildInfoPlugin)
 
 lazy val ko_scodec_bits = crossProject(JSPlatform, JVMPlatform).in(file("koinu/ko_scodec_bits"))
@@ -105,7 +192,7 @@ lazy val ko_scodec_bits = crossProject(JSPlatform, JVMPlatform).in(file("koinu/k
     buildInfoPackage := "jp.ukiba.koinu.ko_scodec_bits",
 
     libraryDependencies ++= Seq(
-      "org.scodec" %%% "scodec-bits" % "1.2.0",
+      "org.scodec" %%% "scodec-bits" % "1.2.1",
     ),
   ).dependsOn(ko_java)
   .enablePlugins(BuildInfoPlugin)
@@ -115,6 +202,13 @@ lazy val ko_java = crossProject(JSPlatform, JVMPlatform).in(file("koinu/ko_java"
     commonSettings,
     buildInfoSettings,
     buildInfoPackage := "jp.ukiba.koinu.ko_java",
+  )
+  .jsSettings(
+    libraryDependencies ++= Seq(
+      "org.scala-js" %%% "scalajs-dom" % "2.8.0",
+      "io.github.cquiroz" %%% "scala-java-time"      % "2.6.0", // java.time implementation
+      "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.6.0", // avoid `ZoneRulesException: Unknown time-zone ID: Asia/Tokyo`
+    ),
   ).dependsOn(build)
   .enablePlugins(BuildInfoPlugin)
 

@@ -1,6 +1,6 @@
 package jp.ukiba.koinu.build
 
-import java.time.{Instant, ZonedDateTime, OffsetDateTime, ZoneId}
+import java.time.{Instant, OffsetDateTime, ZoneOffset}
 import java.time.format.DateTimeFormatter
 
 /** To be used with sbt-buildinfo */
@@ -11,7 +11,7 @@ trait SbtBuildInfo:
   /** UTC */ val builtAtMillis: Long
 
   /**
-   * The build time with milliseconds and offset, e.g., `2024-07-01 13:11:47.610+090`
+   * The build time with milliseconds and offset, e.g., `2024-07-01 13:11:47.610+0900`
    * formatted with java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSZ")
    * https://github.com/sbt/sbt-buildinfo/blob/v0.12.0/src/main/scala/sbtbuildinfo/BuildInfo.scala#L17
    */
@@ -21,6 +21,9 @@ trait SbtBuildInfo:
 
   def builtAtOffsetDateTime: OffsetDateTime =
     OffsetDateTime.parse(builtAtString, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSZ"))
+
+  /** The offset of the build host */
+  def builtAtOffset: ZoneOffset = builtAtOffsetDateTime.getOffset
 
   /** Milliseconds are usually irrelevant for the build time */
   def builtAtSecondOffsetString: String = builtAtOffsetDateTime.format(builtAtSecondOffsetFormat)
