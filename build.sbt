@@ -26,7 +26,7 @@ lazy val buildInfoSettings = Seq(
   )
 )
 
-lazy val root = crossProject(JSPlatform, JVMPlatform)
+lazy val ukiba = crossProject(JSPlatform, JVMPlatform).in(file("build/ukiba"))
   .settings(
   ).aggregate(
     ko_http4s,
@@ -47,7 +47,7 @@ lazy val ko_http4s = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_ht
     buildInfoPackage := "jp.ukiba.koneko.ko_http4s",
 
     libraryDependencies ++= Seq(
-      "org.scodec" %%% "scodec-bits" % "1.2.0",
+      "org.http4s" %%% "http4s-ember-client" % "1.0.0-M41",
     ),
   ).dependsOn(ko_fs2)
   .enablePlugins(BuildInfoPlugin)
@@ -59,7 +59,8 @@ lazy val ko_fs2 = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_fs2")
     buildInfoPackage := "jp.ukiba.koneko.ko_fs2",
 
     libraryDependencies ++= Seq(
-      "co.fs2" %%% "fs2-core" % "3.10.2",
+      "co.fs2" %%% "fs2-core" % "3.10.2", // depends on scodec-bits 1.1.38
+      "org.scodec" %%% "scodec-bits" % "1.2.0",
     ),
   ).dependsOn(ko_cats_effect, ko_scodec_bits)
   .enablePlugins(BuildInfoPlugin)
