@@ -1,8 +1,6 @@
 package jp.ukiba.koinu.ko_java
 package time
 
-import jp.ukiba.koinu.ko_java.time.Instant // extension to java.time.Instant
-
 class InstantSuite extends munit.FunSuite:
   test("epochMilli"):
     assertEquals                  (Instant.parse("+292278994-08-17T07:12:55.807Z").epochMilli, Long.MaxValue)

@@ -1,11 +1,14 @@
-ukiba [Scala](https://www.scala-lang.org/) libraries.
+This is an amalgamation of my code that could be reusable.
 
-# The project layout
+# The directory layout
 
 |Name                   |Role|
 |-----------------------|----|
-|`koneko/`              |Functional programming libraries that depend on [cats](https://github.com/typelevel/cats)|
-|`koinu/`               |Scala libraries that do not depend on any of the above|
+|`jvm/`                 |Programs for a Java virtual machine|
+|`js/`                  |Programs for a JavaScript runtime, including the browser|
+|`shared/`              |Programs that do not depend on the environment|
+|`koneko/`              |Libraries that depend on [cats](https://github.com/typelevel/cats)|
+|`koinu/`               |[Scala](https://www.scala-lang.org/) libraries|
 |`build.sbt`, `project/`|The build scripts|
 
 
@@ -15,9 +18,12 @@ ukiba [Scala](https://www.scala-lang.org/) libraries.
 
 1. Java 21 and [sbt](https://www.scala-sbt.org/)
 
-    1. For example with [Coursier](https://get-coursier.io/) and [Corretto](https://aws.amazon.com/corretto/)
+    1. [Coursier](https://get-coursier.io/) and
+       [Corretto](https://aws.amazon.com/corretto/)
+       can be used to setup a shell, for example
 
-           # set JAVA_HOME and PATH, optionally downloading the Java version when not available
+           # set JAVA_HOME and PATH
+           # optionally downloading the Java version if not already installed
            eval $(cs java --jvm corretto:21 --env)
 
 

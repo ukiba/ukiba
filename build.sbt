@@ -125,7 +125,7 @@ lazy val ko_fs2 = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_fs2")
     buildInfoPackage := "jp.ukiba.koneko.ko_fs2",
 
     libraryDependencies ++= Seq(
-      "co.fs2" %%% "fs2-io" % "3.11.0",
+      "co.fs2" %%% "fs2-io" % "3.11.0", // TODO 3.12.0 depends on cats-effect 3.6.0
     ),
   ).dependsOn(ko_cats_effect, ko_scodec_bits, ko_munit % "test")
   .enablePlugins(BuildInfoPlugin)
@@ -152,7 +152,7 @@ lazy val ko_munit = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_mun
 
     libraryDependencies ++= Seq(
       "org.scalameta" %%% "munit" % "1.1.0",
-      "org.typelevel" %%% "munit-cats-effect" % "2.0.0",
+      "org.typelevel" %%% "munit-cats-effect" % "2.0.0", // TODO 2.1.0 depends on cats-effect 3.6.0
       "org.typelevel" %%% "log4cats-testing" % "2.7.0",
     ),
   ).dependsOn(ko_cats)
@@ -202,6 +202,9 @@ lazy val ko_java = crossProject(JSPlatform, JVMPlatform).in(file("koinu/ko_java"
     commonSettings,
     buildInfoSettings,
     buildInfoPackage := "jp.ukiba.koinu.ko_java",
+    libraryDependencies ++= Seq(
+      "org.scalameta" %%% "munit" % "1.1.0",
+    ),
   )
   .jsSettings(
     libraryDependencies ++= Seq(

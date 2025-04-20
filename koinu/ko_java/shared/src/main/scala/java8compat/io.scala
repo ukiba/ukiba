@@ -1,11 +1,12 @@
-package jp.ukiba.koinu.ko_java.java8compat
+package jp.ukiba.koinu.ko_java
+package java8compat
 
 import scala.math.{min, addExact}
 import scala.annotation.{tailrec, targetName}
 import java.io.*
 
 /** Provides Java 8 compatibilities for java.io classes */
-package object io:
+object io:
   val chunkSize = 16 * 1024
 
   // InputStream

@@ -6,12 +6,10 @@ import java.time.{Instant, Duration => JDuration}
 /** Extensions to java.time package */
 package object time:
   extension (instant: Instant)
-    // `MAX` is 1 billion years away, and Long can represent 292 billion years
+    /**
+     * throws No exception in [Instant.MIN, Instant.MAX]
+     */
     inline def epochSecond: Long = instant.getEpochSecond
-
-    // always in [0, 999,999,999]
-    // named as `nanoPart` rather than `nano` to emphasize it is not nanoseconds since the epoch
-    inline def nanoPart: Int = instant.getNano
 
     /**
      * @throws java.lang.ArithmeticException outside [
@@ -32,12 +30,12 @@ package object time:
       if epochSecond >= 0 then
         Math.addExact(
           Math.multiplyExact(epochSecond, 1_000_000),
-          Math.floorDiv(nanoPart, 1_000)
+          Math.floorDiv(instant.getNano, 1_000)
         )
       else
         Math.addExact(
           Math.multiplyExact(epochSecond + 1, 1_000_000), // `+ 1` to avoid overflow
-          Math.floorDiv(nanoPart, 1_000) - 1_000_000
+          Math.floorDiv(instant.getNano, 1_000) - 1_000_000
         )
 
     /**
@@ -51,12 +49,12 @@ package object time:
       if epochSecond >= 0 then
         Math.addExact(
           Math.multiplyExact(epochSecond, 1_000_000_000),
-          nanoPart
+          instant.getNano
         )
       else
         Math.addExact(
           Math.multiplyExact(epochSecond + 1, 1_000_000_000), // `+ 1` to avoid overflow
-          nanoPart - 1_000_000_000
+          instant.getNano - 1_000_000_000
         )
 
     def plusMicros(microsToAdd: Long): Instant =
@@ -70,7 +68,7 @@ package object time:
       else
         plusMicros(-microsToAdd)
 
-  // TODO use `extension (erased $: Instant.type)` on Scala 3.6
+  // TODO use `extension (erased $: Instant.type)` on Scala 3.6.5+
   // https://github.com/lampepfl/dotty-feature-requests/issues/168#issuecomment-1486536624
   type Instant = java.time.Instant
   object Instant { export java.time.Instant.* }
