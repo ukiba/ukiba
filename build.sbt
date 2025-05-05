@@ -38,6 +38,7 @@ lazy val ukiba = crossProject(JSPlatform, JVMPlatform).in(file("build/ukiba"))
   .settings(
   ).dependsOn(
     ko_openai,
+    ko_aws,
     ko_ffmpeg,
     ko_pdfbox,
     ko_http4s,
@@ -61,7 +62,22 @@ lazy val ko_openai = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_op
       "org.http4s" %%% "http4s-circe" % "1.0.0-M44",
       "io.circe" %%% "circe-generic" % "0.14.12", // json
     ),
-  ).dependsOn(ko_http4s)
+  ).dependsOn(ko_http4s, ko_munit % "test")
+  .enablePlugins(BuildInfoPlugin)
+
+lazy val ko_aws = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_aws"))
+  .settings(
+    commonSettings,
+    buildInfoSettings,
+    buildInfoPackage := "jp.ukiba.koneko.ko_aws",
+
+    libraryDependencies ++= Seq(
+      "software.amazon.awssdk" % "auth"     % "2.31.40",
+      "software.amazon.awssdk" % "sso"      % "2.31.40", // avoid `To use Sso related properties in the '...' profile, the 'sso' service module must be on the class path.`
+      "software.amazon.awssdk" % "ssooidc"  % "2.31.40", // avoid `To use SSO OIDC related properties in the '...' profile, the 'ssooidc' service module must be on the class path.`
+      "org.http4s" %%% "http4s-ember-client" % "1.0.0-M44" % Test,
+    ),
+  ).dependsOn(ko_http4s, ko_munit % "test")
   .enablePlugins(BuildInfoPlugin)
 
 lazy val ko_ffmpeg = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_ffmpeg"))

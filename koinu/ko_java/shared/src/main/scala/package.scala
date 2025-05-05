@@ -3,12 +3,17 @@ package jp.ukiba.koinu
 import scala.annotation.tailrec
 import java.nio.charset.{Charset, StandardCharsets}, StandardCharsets.{UTF_8, UTF_16}
 import java.security.MessageDigest
+import javax.crypto.spec.SecretKeySpec
+import javax.crypto.Mac
 import java.time.Instant
 
 // hash example: "abc".utf8.sha2.sha256
 
 package object ko_java:
   extension (str: String)
+    def utf8Bytes : Array[Byte] = str.getBytes(UTF_8)
+    def utf16Bytes: Array[Byte] = str.getBytes(UTF_16) // Java native encoding
+
     def countRight(pred: Char => Boolean): Int =
       @tailrec def loop(count: Int, lastIndex: Int): Int =
         if (lastIndex >= 0 && pred(str(lastIndex)))
@@ -42,8 +47,23 @@ package object ko_java:
 
   extension (bytes: Array[Byte])
     // needs to mask with 0xff on Scala.js 1.17
-    def toHexString             : String = bytes.map(bt => f"${bt & 0xff}%02X").mkString
-    def toHexString(sep: String): String = bytes.map(bt => f"${bt & 0xff}%02X").mkString(sep)
+
+    /*
+      Lower case is consistent with
+      1. Unix tools (xxd, hexdump, sha256sum, Git object IDs, OpenSSL digests)
+      2. RFC 5952 (IPv6): address MUST be represented in lowercase
+      3. AWS Signature Version 4: Signature must be in lowercase
+
+      However, the followings use the uppwe cases
+      1. RFC 3986 (URI): should use uppercase hexadecimal digits for all percent-encodings
+      2. RFC 4648 (Base16): upper case is used in the table
+      3. RFC 8427 (DNS-in-JSON): Names that end in "HEX" ... in base16 encoding (hex with uppercase letters)
+    */
+    def toHexString             : String = bytes.map(bt => f"${bt & 0xff}%02x").mkString
+    def toHexString(sep: String): String = bytes.map(bt => f"${bt & 0xff}%02x").mkString(sep)
+
+    def toHexStringUpperCase             : String = bytes.map(bt => f"${bt & 0xff}%02X").mkString
+    def toHexStringUpperCase(sep: String): String = bytes.map(bt => f"${bt & 0xff}%02X").mkString(sep)
 
   extension [A](ite: Iterable[A])
     def --(excludes: Iterable[A]): Iterable[A] = ite.filterNot(elem => excludes.exists(_ == elem))
@@ -63,16 +83,26 @@ package object ko_java:
 
   // TODO move to KoCrypt in ko_cats_effect
 
-  def hash(algo: String)(bytes: Array[Byte]): Array[Byte] = MessageDigest.getInstance(algo).digest(bytes)
+  def hash(algo: String)(data: Array[Byte]): Array[Byte] = MessageDigest.getInstance(algo).digest(data)
+  def hmac(algo: String)(key: Array[Byte])(data: Array[Byte]): Array[Byte] =
+    val mac = Mac.getInstance(algo)
+    mac.init(SecretKeySpec(key, algo))
+    mac.doFinal(data)
 
   extension (bytes: Array[Byte])
     // https://docs.oracle.com/en/java/javase/17/docs/specs/security/standard-names.html#messagedigest-algorithms
     // expliciyly distinguish SHA-2 family
-    inline def md2 : Array[Byte] => Array[Byte] = hash("MD2"  )
-    inline def md5 : Array[Byte] => Array[Byte] = hash("MD5"  )
-    inline def sha1: Array[Byte] => Array[Byte] = hash("SHA-1")
+    inline def md2 : Array[Byte] = hash("MD2"  )(bytes)
+    inline def md5 : Array[Byte] = hash("MD5"  )(bytes)
+    inline def sha1: Array[Byte] = hash("SHA-1")(bytes)
     inline def sha2 = ArrayByteOps.Sha2(bytes)
     inline def sha3 = ArrayByteOps.Sha3(bytes)
+
+    // popular shortcuts
+    inline def `SHA2-256`: Array[Byte] = hash("SHA-256")(bytes)
+    inline def `SHA2-512`: Array[Byte] = hash("SHA-512")(bytes)
+
+    inline def hmacSHA256(key: Array[Byte]): Array[Byte] = hmac("HmacSHA256")(key)(bytes)
 
   object ArrayByteOps:
     class Sha2(bytes: Array[Byte]) extends AnyVal:
@@ -80,18 +110,18 @@ package object ko_java:
       // so they are named traditionally like fs2
       // https://github.com/typelevel/fs2/blob/main/core/jvm/src/main/scala/fs2/hash.scala
       // https://github.com/typelevel/fs2/blob/main/core/js/src/main/scala/fs2/hash.scala
-      inline def sha224    : Array[Byte] => Array[Byte] = hash("SHA-224"    )
-      inline def sha256    : Array[Byte] => Array[Byte] = hash("SHA-256"    )
-      inline def sha384    : Array[Byte] => Array[Byte] = hash("SHA-384"    )
-      inline def sha512    : Array[Byte] => Array[Byte] = hash("SHA-512"    )
-      inline def sha512_224: Array[Byte] => Array[Byte] = hash("SHA-512/224")
-      inline def sha512_256: Array[Byte] => Array[Byte] = hash("SHA-512/256")
+      inline def sha224    : Array[Byte] = hash("SHA-224"    )(bytes)
+      inline def sha256    : Array[Byte] = hash("SHA-256"    )(bytes)
+      inline def sha384    : Array[Byte] = hash("SHA-384"    )(bytes)
+      inline def sha512    : Array[Byte] = hash("SHA-512"    )(bytes)
+      inline def sha512_224: Array[Byte] = hash("SHA-512/224")(bytes)
+      inline def sha512_256: Array[Byte] = hash("SHA-512/256")(bytes)
 
     class Sha3(bytes: Array[Byte]) extends AnyVal:
-      inline def sha224    : Array[Byte] => Array[Byte] = hash("SHA3-224"   )
-      inline def sha256    : Array[Byte] => Array[Byte] = hash("SHA3-256"   )
-      inline def sha384    : Array[Byte] => Array[Byte] = hash("SHA3-384"   )
-      inline def sha512    : Array[Byte] => Array[Byte] = hash("SHA3-512"   )
+      inline def sha224    : Array[Byte] = hash("SHA3-224"   )(bytes)
+      inline def sha256    : Array[Byte] = hash("SHA3-256"   )(bytes)
+      inline def sha384    : Array[Byte] = hash("SHA3-384"   )(bytes)
+      inline def sha512    : Array[Byte] = hash("SHA3-512"   )(bytes)
 
   object Charsets:
     // https://docs.oracle.com/en/java/javase/17/intl/supported-encodings.html
@@ -105,9 +135,6 @@ package object ko_java:
     // ISO-2022-JP
     // x-euc-jp-linux
     // x-windows-iso2022jp
-
-  extension (str: String) // Java native encoding is UTF-16
-    def utf8      : Array[Byte] = str.getBytes(Charsets.utf8)
 
 /*
   extension [A](ite: Iterable[A])

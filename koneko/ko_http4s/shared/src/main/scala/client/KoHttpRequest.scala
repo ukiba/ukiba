@@ -83,6 +83,9 @@ object KoHttpRequest:
     def underlying: Request[F]
     def withUnderlying(req: Request[F]): Self
 
+    def mapRequest(f: Request[F] => Request[F]): Self = withUnderlying(f(underlying))
+    def evalMapRequest(f: Request[F] => F[Request[F]]): F[Self] = f(underlying).map(withUnderlying)
+
     /** method */
     def method: Method = underlying.method
 

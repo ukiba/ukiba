@@ -1,11 +1,14 @@
 package jp.ukiba.koinu.ko_java
 
 import scala.concurrent.duration.{FiniteDuration, NANOSECONDS, DurationLong}
-import java.time.{Instant, Duration => JDuration}
+import java.time.{Instant, ZonedDateTime, ZoneOffset, OffsetDateTime, Duration => JDuration}, ZoneOffset.UTC
 
 /** Extensions to java.time package */
 package object time:
   extension (instant: Instant)
+    inline def atUtcZone  : ZonedDateTime  = instant.atZone  (UTC)
+    inline def atUtcOffset: OffsetDateTime = instant.atOffset(UTC)
+
     /**
      * throws No exception in [Instant.MIN, Instant.MAX]
      */
