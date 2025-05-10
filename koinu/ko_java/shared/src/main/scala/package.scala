@@ -90,38 +90,43 @@ package object ko_java:
     mac.doFinal(data)
 
   extension (bytes: Array[Byte])
-    // https://docs.oracle.com/en/java/javase/17/docs/specs/security/standard-names.html#messagedigest-algorithms
-    // expliciyly distinguish SHA-2 family
-    inline def md2 : Array[Byte] = hash("MD2"  )(bytes)
-    inline def md5 : Array[Byte] = hash("MD5"  )(bytes)
-    inline def sha1: Array[Byte] = hash("SHA-1")(bytes)
-    inline def sha2 = ArrayByteOps.Sha2(bytes)
-    inline def sha3 = ArrayByteOps.Sha3(bytes)
+    // https://docs.oracle.com/en/java/javase/21/docs/specs/security/standard-names.html#messagedigest-algorithms
+    // MD2 is not used since it is hardly used
+    inline def md5 : Array[Byte] = hash("MD5"  )(bytes) // MD5 is defined for compatibility
 
-    // popular shortcuts
-    inline def `SHA2-256`: Array[Byte] = hash("SHA-256")(bytes)
-    inline def `SHA2-512`: Array[Byte] = hash("SHA-512")(bytes)
+    // name as `sha1` rather-than `sha-1` like
+    // https://github.com/typelevel/fs2/blob/main/core/jvm/src/main/scala/fs2/hash.scala
+    // https://github.com/typelevel/fs2/blob/main/core/js/src/main/scala/fs2/hash.scala
+    inline def sha1: Array[Byte] = hash("SHA-1")(bytes) // SHA-1 is widely used
 
-    inline def hmacSHA256(key: Array[Byte]): Array[Byte] = hmac("HmacSHA256")(key)(bytes)
+    // SHA-2
+    // NIST: SHA-224 will be disallowed after 2030-12-31 (SP 800-131A rev. 3)
+    inline def sha256    : Array[Byte] = hash("SHA-256"    )(bytes)
+    inline def sha384    : Array[Byte] = hash("SHA-384"    )(bytes)
+    inline def sha512    : Array[Byte] = hash("SHA-512"    )(bytes)
+    // NIST: SHA-512/224 will be disallowed after 2030-12-31 (SP 800-131A rev. 3)
+    inline def sha512_256: Array[Byte] = hash("SHA-512/256")(bytes)
+
+    // SHA-3 (Keccak)
+    // NIST: SHA3-224 will be disallowed after 2030-12-31 (SP 800-131A rev. 3)
+    inline def sha3_256: Array[Byte] = hash("SHA3-256")(bytes)
+    inline def sha3_384: Array[Byte] = hash("SHA3-384")(bytes)
+    inline def sha3_512: Array[Byte] = hash("SHA3-512")(bytes)
+
+    inline def hmac = ArrayByteOps.Hmac(bytes)
 
   object ArrayByteOps:
-    class Sha2(bytes: Array[Byte]) extends AnyVal:
-      // the method name would be clearer if named like `SHA2-512/256`but then it would always need quotation
-      // so they are named traditionally like fs2
-      // https://github.com/typelevel/fs2/blob/main/core/jvm/src/main/scala/fs2/hash.scala
-      // https://github.com/typelevel/fs2/blob/main/core/js/src/main/scala/fs2/hash.scala
-      inline def sha224    : Array[Byte] = hash("SHA-224"    )(bytes)
-      inline def sha256    : Array[Byte] = hash("SHA-256"    )(bytes)
-      inline def sha384    : Array[Byte] = hash("SHA-384"    )(bytes)
-      inline def sha512    : Array[Byte] = hash("SHA-512"    )(bytes)
-      inline def sha512_224: Array[Byte] = hash("SHA-512/224")(bytes)
-      inline def sha512_256: Array[Byte] = hash("SHA-512/256")(bytes)
+    class Hmac(bytes: Array[Byte]) extends AnyVal:
+      inline def sha1      (key: Array[Byte]): Array[Byte] = hmac("HmacSHA1"      )(key)(bytes)
 
-    class Sha3(bytes: Array[Byte]) extends AnyVal:
-      inline def sha224    : Array[Byte] = hash("SHA3-224"   )(bytes)
-      inline def sha256    : Array[Byte] = hash("SHA3-256"   )(bytes)
-      inline def sha384    : Array[Byte] = hash("SHA3-384"   )(bytes)
-      inline def sha512    : Array[Byte] = hash("SHA3-512"   )(bytes)
+      inline def sha256    (key: Array[Byte]): Array[Byte] = hmac("HmacSHA256"    )(key)(bytes)
+      inline def sha384    (key: Array[Byte]): Array[Byte] = hmac("HmacSHA384"    )(key)(bytes)
+      inline def sha512    (key: Array[Byte]): Array[Byte] = hmac("HmacSHA512"    )(key)(bytes)
+      inline def sha512_256(key: Array[Byte]): Array[Byte] = hmac("HmacSHA512/256")(key)(bytes)
+
+      inline def sha3_256  (key: Array[Byte]): Array[Byte] = hmac("HmacSHA3-256"  )(key)(bytes)
+      inline def sha3_384  (key: Array[Byte]): Array[Byte] = hmac("HmacSHA3-384"  )(key)(bytes)
+      inline def sha3_512  (key: Array[Byte]): Array[Byte] = hmac("HmacSHA3-512"  )(key)(bytes)
 
   object Charsets:
     // https://docs.oracle.com/en/java/javase/17/intl/supported-encodings.html

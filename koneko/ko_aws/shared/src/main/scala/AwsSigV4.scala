@@ -1,7 +1,7 @@
 package jp.ukiba.koneko
 package ko_aws
 
-import jp.ukiba.koinu.ko_java.{toHexString, utf8Bytes, `SHA2-256`, hmacSHA256}
+import jp.ukiba.koinu.ko_java.{toHexString, utf8Bytes, sha256, hmac}
 import jp.ukiba.koinu.ko_java.time.atUtcZone
 
 import software.amazon.awssdk.auth.credentials.{AwsCredentials, AwsSessionCredentials}
@@ -83,7 +83,7 @@ object AwsSigV4:
       canonicalHeaders.map { (key, value) => s"$key:$value\n" }.mkString, // newline at the end
       signedHeadersNames,
       payload
-    ).mkString("\n").utf8Bytes.`SHA2-256`.toHexString
+    ).mkString("\n").utf8Bytes.sha256.toHexString
 
     // sign
     // https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-header-based-auth.html
@@ -92,7 +92,7 @@ object AwsSigV4:
     val scope      = scopeComps.mkString("/")
     val toSign     = Seq(algo, amzDate, scope, canonicalReqHash).mkString("\n")
 
-    inline def hmac(data: String, key: Array[Byte]): Array[Byte] = data.utf8Bytes.hmacSHA256(key)
+    inline def hmac(data: String, key: Array[Byte]): Array[Byte] = data.utf8Bytes.hmac.sha256(key)
     val sigKey = scopeComps.foldLeft(s"AWS4${creds.secretAccessKey}".utf8Bytes) { (key, comp) => hmac(comp, key) }
     val sig = hmac(toSign, sigKey).toHexString
 
