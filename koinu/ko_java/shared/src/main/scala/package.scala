@@ -101,9 +101,9 @@ package object ko_java:
 
     // SHA-2
     // NIST: SHA-224 will be disallowed after 2030-12-31 (SP 800-131A rev. 3)
-    inline def sha256: Array[Byte] = hash("SHA-256")(bytes)
-    inline def sha384: Array[Byte] = hash("SHA-384")(bytes)
-    inline def sha512: Array[Byte] = hash("SHA-512")(bytes)
+    inline def sha256    : Array[Byte] = hash("SHA-256"    )(bytes)
+    inline def sha384    : Array[Byte] = hash("SHA-384"    )(bytes)
+    inline def sha512    : Array[Byte] = hash("SHA-512"    )(bytes)
     // NIST: SHA-512/224 will be disallowed after 2030-12-31 (SP 800-131A rev. 3)
     inline def sha512_256: Array[Byte] = hash("SHA-512/256")(bytes)
 
@@ -113,7 +113,20 @@ package object ko_java:
     inline def sha3_384: Array[Byte] = hash("SHA3-384")(bytes)
     inline def sha3_512: Array[Byte] = hash("SHA3-512")(bytes)
 
-    inline def hmacSHA256(key: Array[Byte]): Array[Byte] = hmac("HmacSHA256")(key)(bytes)
+    inline def hmac = ArrayByteOps.Hmac(bytes)
+
+  object ArrayByteOps:
+    class Hmac(bytes: Array[Byte]) extends AnyVal:
+      inline def sha1      (key: Array[Byte]): Array[Byte] = hmac("HmacSHA1"      )(key)(bytes)
+
+      inline def sha256    (key: Array[Byte]): Array[Byte] = hmac("HmacSHA256"    )(key)(bytes)
+      inline def sha384    (key: Array[Byte]): Array[Byte] = hmac("HmacSHA384"    )(key)(bytes)
+      inline def sha512    (key: Array[Byte]): Array[Byte] = hmac("HmacSHA512"    )(key)(bytes)
+      inline def sha512_256(key: Array[Byte]): Array[Byte] = hmac("HmacSHA512/256")(key)(bytes)
+
+      inline def sha3_256  (key: Array[Byte]): Array[Byte] = hmac("HmacSHA3-256"  )(key)(bytes)
+      inline def sha3_384  (key: Array[Byte]): Array[Byte] = hmac("HmacSHA3-384"  )(key)(bytes)
+      inline def sha3_512  (key: Array[Byte]): Array[Byte] = hmac("HmacSHA3-512"  )(key)(bytes)
 
   object Charsets:
     // https://docs.oracle.com/en/java/javase/17/intl/supported-encodings.html
