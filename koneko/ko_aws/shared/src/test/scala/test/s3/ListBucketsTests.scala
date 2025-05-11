@@ -23,6 +23,7 @@ class ListBucketsTests extends KoCatsEffectSuite:
     val http = KoHttpClient(client).withUri(endpointOf(AwsRegion.Tokyo))
     for
       creds <- AwsSdk.defaultCredentials[F]
+      _ = println(s"## creds = $creds")
       req <- ListBuckets.Request().pure[F]
       resp <- ListBuckets(creds)(http)(req)
     yield

@@ -4,10 +4,10 @@ package ko_aws
 import jp.ukiba.koinu.ko_java.{toHexString, utf8Bytes, sha256, hmac}
 import jp.ukiba.koinu.ko_java.time.atUtcZone
 
-import software.amazon.awssdk.auth.credentials.{AwsCredentials, AwsSessionCredentials}
 import org.http4s.{Request, Uri, Header, Headers}
 import org.http4s.headers.Host
 import cats.effect.Sync
+import cats.syntax.all.*
 
 import java.time.{Instant, ZoneOffset, ZonedDateTime}
 import java.time.format.DateTimeFormatter
@@ -32,7 +32,7 @@ object AwsSigV4:
   */
   def unsignedPayload[F[_]: Sync](
     req: Request[F],
-    creds: AwsCredentials,
+    creds: Aws.Credentials,
     region: String,
     service: String,
     canonicalHeaderNames: Seq[String] = defaultCanonicalHeaderNames, // supports glob at either end
@@ -51,12 +51,8 @@ object AwsSigV4:
       "host"                 -> host, // host header (HTTP/1.1) or the :authority header (HTTP/2)
       "x-amz-content-sha256" -> payload,
       "x-amz-date"           -> amzDate,
-    ) ++ (
-      // include session token if present
-      creds match
-        case creds: AwsSessionCredentials => Seq("x-amz-security-token" -> creds.sessionToken)
-        case _ => Nil
-    )
+    ) ++ creds.sessionToken.toSeq.map: sessionToken =>
+      "x-amz-security-token" -> sessionToken
 
     // canonical header
     val canonicalHeaders = (req.headers ++ Headers(requiredHeaders)).headers.flatMap: headerRaw =>

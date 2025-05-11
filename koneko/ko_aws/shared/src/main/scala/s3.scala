@@ -19,7 +19,7 @@ package object s3:
     Uri.unsafeFromString(s"https://s3.$regionCode.amazonaws.com/")
 
   object ListBuckets:
-    def apply[F[_]: Async](creds: AwsSdk.Credentials)(http: KoHttpClient[F, ?])(req: Request)
+    def apply[F[_]: Async](creds: Aws.Credentials)(http: KoHttpClient[F, ?])(req: Request)
         (using Logger[F]): F[Response] =
       http.GET("")
           .withParamOpt("bucket-region"     , req.`bucket-region`)

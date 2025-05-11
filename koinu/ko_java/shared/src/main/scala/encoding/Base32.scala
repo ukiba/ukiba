@@ -147,7 +147,7 @@ trait Base32 {
       case 4 => encodedLen / 8 * 5 + 2
       case 2 => encodedLen / 8 * 5 + 1
       case _ => throw new IllegalArgumentException(s"illegal Base 32 encoded length: ${
-          text.length} (${text.truncateWith(100, "...")})")
+          text.length} (${text.truncate(100)})")
     }
     val decoded = new Array[Byte](decodedLen) // preallocate
 

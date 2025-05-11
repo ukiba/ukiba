@@ -28,7 +28,7 @@ package object ko_java:
      * Truncates the string if its length is more than maxLen.
      * This appends the given suffix when truncated (the total length will be maxLen)
     */
-    def truncateWith(maxLen: Int, suffix: String = "..."): String = {
+    def truncate(maxLen: Int, suffix: String = "..."): String = {
       require(suffix.length <= maxLen)
       if (str.length <= maxLen)
         str

@@ -102,7 +102,7 @@ trait Base64 {
       case 3 => encodedLen / 4 * 3 + 2
       case 2 => encodedLen / 4 * 3 + 1
       case _ => throw new IllegalArgumentException(s"illegal Base 64 encoded length: ${
-          text.length} (${text.truncateWith(100, "...")})")
+          text.length} (${text.truncate(100)})")
     }
     val decoded = new Array[Byte](decodedLen) // preallocate
 

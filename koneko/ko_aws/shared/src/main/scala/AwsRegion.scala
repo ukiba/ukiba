@@ -2,6 +2,7 @@ package jp.ukiba.koneko
 package ko_aws
 
 // https://docs.aws.amazon.com/global-infrastructure/latest/regions/aws-regions.html
+// https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/regions/Region.html
 // this is not enum since
 // 1. it wouldn't be exhaustive over time
 // 2. there could be a custom code by S3 compatible service
