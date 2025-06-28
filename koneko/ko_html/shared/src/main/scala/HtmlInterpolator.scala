@@ -10,11 +10,21 @@ extension (inline sc: StringContext)
 object HtmlInterpolator:
   import HtmlAst.{ArgCharMin, MaxArgsLen}
 
-  def impl(scExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using Quotes): Expr[Any] =
-    // extract Seq from the expression
-    val (parts, args) = (scExpr, argsExpr) match
-      case ('{ StringContext(${Varargs(partExprs)}*) }, Varargs(args)) =>
-        (partExprs.map(_.valueOrAbort), args.toIndexedSeq)
+  def impl(scExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using quotes: Quotes): Expr[Any] =
+    import quotes.reflect.report
+
+    // Extract literal parts
+    val parts = scExpr match
+      case '{ StringContext(${Varargs(rawParts)}*) } =>
+        rawParts.map(_.valueOrAbort)
+      case other =>
+        report.errorAndAbort("html interpolator requires a literal StringContext", other)
+
+    // Extract argument expressions
+    val args = argsExpr match
+      case Varargs(es) => es.toIndexedSeq
+      case other =>
+        report.errorAndAbort("html interpolator could not inspect var-args", other)
 
     // sanity check
     require(parts.length == args.length + 1, s"parts and args mismatch: parts.length = ${
