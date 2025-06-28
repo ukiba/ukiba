@@ -28,6 +28,17 @@ object Aws:
       sessionToken: Option[String],
     ) extends Credentials
 
+  /*
+    This profile only holds credentials and region
+
+    https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html
+    > Each profile can specify different credentials and can also specify different AWS Regions and output formats.
+  */
+  case class Profile(
+    credentials: Credentials,
+    region: String,
+  )
+
   /** RFC 3986 URI Unreserved Characters */
   def uriUnreservedChar(ch: Char): Boolean = ch match
     // https://datatracker.ietf.org/doc/html/rfc3986#section-2.3

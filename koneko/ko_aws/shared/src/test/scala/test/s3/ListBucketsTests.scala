@@ -19,12 +19,11 @@ class ListBucketsTests extends KoCatsEffectSuite:
 
   given Logger[F] = LoggerFactory[F].getLogger
 
-  test("minimum"):
-    val http = KoHttpClient(client).withUri(endpointOf(AwsRegion.Tokyo))
+  test("no param"):
     for
-      creds <- AwsSdk.defaultCredentials[F]
-      _ = println(s"## creds = $creds")
+      profile <- AwsSdk.defaultProfile[F]
+      http = KoHttpClient(client).withUri(endpointOf(profile.region))
       req <- ListBuckets.Request().pure[F]
-      resp <- ListBuckets(creds)(http)(req)
+      resp <- ListBuckets(profile)(http)(req)
     yield
       println(s"resp = $resp")

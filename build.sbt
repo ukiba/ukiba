@@ -1,3 +1,6 @@
+ThisBuild / version := "0.1.0-SNAPSHOT"
+ThisBuild / organization := "jp.ukiba"
+
 // The default settings
 // Defining `ThisBuild / scalaVersion` avoids sbt-updates 0.6.3 to report update for scala-library
 ThisBuild / scalaVersion := "3.6.4"  
@@ -11,9 +14,6 @@ ThisBuild / scalacOptions ++= Seq(
   "-encoding", "UTF-8",
 )
 
-ThisBuild / version := "0.1.0-SNAPSHOT"
-ThisBuild / organization := "jp.ukiba"
-
 // use Seq rather than ThisBuild for the default
 // https://www.scala-sbt.org/1.x/docs/Multi-Project.html
 lazy val commonSettings = Seq(
@@ -24,6 +24,13 @@ lazy val commonSettings = Seq(
 
   run / fork := true,
   run / baseDirectory := file("."),
+
+/*
+  Test / fork := true,
+  Test / javaOptions ++= Seq(
+    "-Dcats.effect.tracing.buffer.size=8192", // the default 16 would not capture the entire stack trace
+  ),
+*/
 )
 
 lazy val buildInfoSettings = Seq(
@@ -42,6 +49,7 @@ lazy val ukiba = crossProject(JSPlatform, JVMPlatform).in(file("build/ukiba"))
     ko_ffmpeg,
     ko_pdfbox,
     ko_http4s,
+    ko_fs2_xml,
     ko_fs2,
     ko_cats_effect,
     ko_html,
@@ -72,12 +80,12 @@ lazy val ko_aws = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_aws")
     buildInfoPackage := "jp.ukiba.koneko.ko_aws",
 
     libraryDependencies ++= Seq(
-      "software.amazon.awssdk" % "auth"     % "2.31.40",
-      "software.amazon.awssdk" % "sso"      % "2.31.40", // avoid `To use Sso related properties in the '...' profile, the 'sso' service module must be on the class path.`
-      "software.amazon.awssdk" % "ssooidc"  % "2.31.40", // avoid `To use SSO OIDC related properties in the '...' profile, the 'ssooidc' service module must be on the class path.`
+      "software.amazon.awssdk" % "auth"     % "2.31.45",
+      "software.amazon.awssdk" % "sso"      % "2.31.45", // avoid `To use Sso related properties in the '...' profile, the 'sso' service module must be on the class path.`
+      "software.amazon.awssdk" % "ssooidc"  % "2.31.45", // avoid `To use SSO OIDC related properties in the '...' profile, the 'ssooidc' service module must be on the class path.`
       "org.http4s" %%% "http4s-ember-client" % "1.0.0-M44" % Test,
     ),
-  ).dependsOn(ko_http4s, ko_munit % "test")
+  ).dependsOn(ko_http4s, ko_fs2_xml, ko_munit % "test")
   .enablePlugins(BuildInfoPlugin)
 
 lazy val ko_ffmpeg = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_ffmpeg"))
@@ -134,6 +142,18 @@ lazy val ko_http4s = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_ht
   ).dependsOn(ko_fs2, ko_munit % "test")
   .enablePlugins(BuildInfoPlugin)
 
+lazy val ko_fs2_xml = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_fs2_xml"))
+  .settings(
+    commonSettings,
+    buildInfoSettings,
+    buildInfoPackage := "jp.ukiba.koneko.ko_fs2.xml",
+
+    libraryDependencies ++= Seq(
+      "org.gnieh" %% "fs2-data-xml" % "1.12.0",
+    ),
+  ).dependsOn(ko_fs2, ko_munit % "test")
+  .enablePlugins(BuildInfoPlugin)
+
 lazy val ko_fs2 = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_fs2"))
   .settings(
     commonSettings,
@@ -141,7 +161,7 @@ lazy val ko_fs2 = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_fs2")
     buildInfoPackage := "jp.ukiba.koneko.ko_fs2",
 
     libraryDependencies ++= Seq(
-      "co.fs2" %%% "fs2-io" % "3.11.0", // TODO 3.12.0 depends on cats-effect 3.6.0
+      "co.fs2" %%% "fs2-io" % "3.12.0",
     ),
   ).dependsOn(ko_cats_effect, ko_scodec_bits, ko_munit % "test")
   .enablePlugins(BuildInfoPlugin)
@@ -153,7 +173,7 @@ lazy val ko_cats_effect = crossProject(JSPlatform, JVMPlatform).in(file("koneko/
     buildInfoPackage := "jp.ukiba.koneko.ko_cats_effect",
 
     libraryDependencies ++= Seq(
-      "org.typelevel" %%% "cats-effect" % "3.5.7",
+      "org.typelevel" %%% "cats-effect" % "3.6.1",
       "org.typelevel" %%% "log4cats-core" % "2.7.0", // there are alternative logging libraries
     ),
   ).dependsOn(ko_cats, ko_munit % "test")
@@ -167,8 +187,8 @@ lazy val ko_munit = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_mun
     buildInfoPackage := "jp.ukiba.koneko.ko_munit",
 
     libraryDependencies ++= Seq(
-      "org.scalameta" %%% "munit" % "1.1.0",
-      "org.typelevel" %%% "munit-cats-effect" % "2.0.0", // TODO 2.1.0 depends on cats-effect 3.6.0
+      "org.scalameta" %%% "munit" % "1.1.1",
+      "org.typelevel" %%% "munit-cats-effect" % "2.1.0", // TODO 2.1.0 depends on cats-effect 3.6.0
       "org.typelevel" %%% "log4cats-testing" % "2.7.0",
     ),
   ).dependsOn(ko_cats)
@@ -219,7 +239,7 @@ lazy val ko_java = crossProject(JSPlatform, JVMPlatform).in(file("koinu/ko_java"
     buildInfoSettings,
     buildInfoPackage := "jp.ukiba.koinu.ko_java",
     libraryDependencies ++= Seq(
-      "org.scalameta" %%% "munit" % "1.1.0",
+      "org.scalameta" %%% "munit" % "1.1.1",
     ),
   )
   .jsSettings(
