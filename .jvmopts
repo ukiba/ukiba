@@ -1,0 +1,2 @@
+# test performance degrades when 1g, 2g
+-Xmx4g
