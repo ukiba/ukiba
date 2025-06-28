@@ -12,7 +12,7 @@ import fs2.Stream
 import cats.syntax.all.*
 
 import scala.util.Random
-import java.nio.file.NoSuchFileException
+import java.io.IOException //java.nio.file.NoSuchFileException is not available on Scala.js
 
 class FilesSyntaxTests extends KoCatsEffectSuite:
   val random = Random()
@@ -26,7 +26,7 @@ class FilesSyntaxTests extends KoCatsEffectSuite:
 
         // fails without the parent directory
         _ <- Stream.emits(bytes).through(Files[F].writeAll(file))
-            .compile.drain.intercept[NoSuchFileException]
+            .compile.drain.intercept[IOException]
 
         // succeeds with createParentIfNotExists
         _ <- Stream.emits(bytes).through(Files[F].createParentIfNotExists.writeAll(file))
@@ -48,7 +48,7 @@ class FilesSyntaxTests extends KoCatsEffectSuite:
         _ <- Files[F].writeCursor(file).use: writeCursor =>
           writeCursor.writeAll(Stream.emits(bytes))
               .void.stream.compile.drain
-        .intercept[NoSuchFileException]
+        .intercept[IOException]
 
         // succeeds with createParentIfNotExists
         _ <- Files[F].createParentIfNotExists.writeCursor(file).use: writeCursor =>
@@ -69,7 +69,7 @@ class FilesSyntaxTests extends KoCatsEffectSuite:
 
         // fails without the parent directory
         _ <- Stream.emit(text).through(Files[F].writeUtf8(file))
-            .compile.drain.intercept[NoSuchFileException]
+            .compile.drain.intercept[IOException]
 
         // succeeds with createParentIfNotExists
         _ <- Stream.emit(text).through(Files[F].createParentIfNotExists.writeUtf8(file))
@@ -89,7 +89,7 @@ class FilesSyntaxTests extends KoCatsEffectSuite:
 
         // fails without the parent directory
         _ <- Stream.emits(texts).through(Files[F].writeUtf8Lines(file))
-            .compile.drain.intercept[NoSuchFileException]
+            .compile.drain.intercept[IOException]
 
         // succeeds with createParentIfNotExists
         _ <- Stream.emits(texts).through(Files[F].createParentIfNotExists.writeUtf8Lines(file))
@@ -114,7 +114,7 @@ class FilesSyntaxTests extends KoCatsEffectSuite:
           _ <- Files[F].appender(file).use: appender =>
             texts.parTraverse: text =>
               appender.write(text)
-          .intercept[NoSuchFileException]
+          .intercept[IOException]
 
           // succeeds with createParentIfNotExists
           _ <- Files[F].createParentIfNotExists.appender(file).use: appender =>
@@ -138,7 +138,7 @@ class FilesSyntaxTests extends KoCatsEffectSuite:
           _ <- Files[F].appender(file).use: appender =>
             texts.traverse: text =>
               appender.write(text)
-          .intercept[NoSuchFileException]
+          .intercept[IOException]
 
           // succeeds with createParentIfNotExists
           _ <- Files[F].createParentIfNotExists.appender(file).use: appender =>
