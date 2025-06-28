@@ -3,7 +3,7 @@ ThisBuild / organization := "jp.ukiba"
 
 // The default settings
 // Defining `ThisBuild / scalaVersion` avoids sbt-updates 0.6.3 to report update for scala-library
-ThisBuild / scalaVersion := "3.6.4"  
+ThisBuild / scalaVersion := "3.7.1"  
 ThisBuild / scalacOptions ++= Seq(
   "-Xmax-inlines", "64",
 
