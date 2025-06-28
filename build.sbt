@@ -14,6 +14,13 @@ ThisBuild / scalacOptions ++= Seq(
   "-encoding", "UTF-8",
 )
 
+import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.scalaJSModuleKind
+import org.scalajs.linker.interface.ModuleKind
+inThisBuild(Seq( // apply to every project in the build
+  scalaJSLinkerConfig        ~= (_.withModuleKind(ModuleKind.ESModule)),
+  Test / scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.ESModule))
+))
+
 // use Seq rather than ThisBuild for the default
 // https://www.scala-sbt.org/1.x/docs/Multi-Project.html
 lazy val commonSettings = Seq(
