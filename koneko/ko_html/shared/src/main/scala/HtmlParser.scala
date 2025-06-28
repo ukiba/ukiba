@@ -30,7 +30,7 @@ class HtmlParser:
 
     // leading and trailing whitespaces are trimmed
     // whitespaces between non-whitespaces are replaced with a single space character
-    ws0.with1 *> charRefOrOtherRep(chars | comment.as("")).repSep(ws).map(_.reduce(_ ++ " " ++ _))
+    ws0.with1 *> charRefOrOtherRep(chars | comment.as("")).repSep(ws).map(_.intercalate(" "))
 
   // https://html.spec.whatwg.org/multipage/syntax.html#syntax-attributes
   val attr: P[Attr] =
@@ -136,6 +136,6 @@ object HtmlParser:
     ) <* P.char(';')
   )
 
-  def charRefOrOtherRep(other: P[String]): P[String] = (charRef | other).rep.map(_.reduce(_ ++ _))
+  def charRefOrOtherRep(other: P[String]): P[String] = (charRef | other).rep.map(_.reduce)
 
 class HtmlParseException(message: String) extends ExceptionBase(message)

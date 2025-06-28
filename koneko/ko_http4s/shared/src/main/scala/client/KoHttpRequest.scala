@@ -325,7 +325,7 @@ object KoHttpRequest:
 
     /** Sets the body with accompanying header */
     def withBody[A](body: A)(using encoder: EntityEncoder[F, A]): Self =
-        withUnderlying(underlying.withEntity(body)(encoder))
+        withUnderlying(underlying.withEntity(body)(using encoder))
 
     // with Entity with hardcoded encoder (so that they need not be imported) */
     def withBody(body: ByteVector): Self = withBody[ByteVector](body)(using EntityEncoder.byteVectorEncoder)
