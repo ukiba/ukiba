@@ -19,7 +19,7 @@ ThisBuild / scalacOptions ++= Seq(
 lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
     "org.typelevel" %% "log4cats-slf4j" % "2.7.0" % Test,
-    "org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.24.3" % Test,
+    "org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.25.0" % Test,
   ),
 
   run / fork := true,
