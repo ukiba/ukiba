@@ -68,7 +68,7 @@ lazy val ko_openai = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_op
 
     libraryDependencies ++= Seq(
       "org.http4s" %%% "http4s-circe" % "1.0.0-M44",
-      "io.circe" %%% "circe-generic" % "0.14.12", // json
+      "io.circe" %%% "circe-generic" % "0.14.14", // json
     ),
   ).dependsOn(ko_http4s, ko_munit % "test")
   .enablePlugins(BuildInfoPlugin)
@@ -132,8 +132,8 @@ lazy val ko_http4s = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_ht
       "org.http4s" %%% "http4s-client"       % "1.0.0-M44",
       "org.http4s" %%% "http4s-ember-client" % "1.0.0-M44" % Test,
       "org.http4s" %%% "http4s-circe"        % "1.0.0-M44" % Test,
-      "io.circe" %%% "circe-generic" % "0.14.12" % Test,
-      "io.circe" %%% "circe-parser"  % "0.14.12" % Test,
+      "io.circe" %%% "circe-generic" % "0.14.14" % Test,
+      "io.circe" %%% "circe-parser"  % "0.14.14" % Test,
     ),
   ).jsSettings(
     libraryDependencies ++= Seq(
