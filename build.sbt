@@ -158,7 +158,7 @@ lazy val ko_fs2_xml = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_f
     buildInfoPackage := "jp.ukiba.koneko.ko_fs2.xml",
 
     libraryDependencies ++= Seq(
-      "org.gnieh" %% "fs2-data-xml" % "1.12.0"
+      "org.gnieh" %%% "fs2-data-xml" % "1.12.0"
         /*
           Avoid the following warning
 
