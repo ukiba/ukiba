@@ -18,7 +18,7 @@ ThisBuild / scalacOptions ++= Seq(
 // https://www.scala-sbt.org/1.x/docs/Multi-Project.html
 lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
-    "org.typelevel" %% "log4cats-slf4j" % "2.7.0" % Test,
+    "org.typelevel" %% "log4cats-slf4j" % "2.7.1" % Test,
     "org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.25.0" % Test,
   ),
 
@@ -174,7 +174,7 @@ lazy val ko_cats_effect = crossProject(JSPlatform, JVMPlatform).in(file("koneko/
 
     libraryDependencies ++= Seq(
       "org.typelevel" %%% "cats-effect" % "3.6.1",
-      "org.typelevel" %%% "log4cats-core" % "2.7.0", // there are alternative logging libraries
+      "org.typelevel" %%% "log4cats-core" % "2.7.1", // there are alternative logging libraries
     ),
   ).dependsOn(ko_cats, ko_munit % "test")
   .enablePlugins(BuildInfoPlugin)
@@ -189,7 +189,7 @@ lazy val ko_munit = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_mun
     libraryDependencies ++= Seq(
       "org.scalameta" %%% "munit" % "1.1.1",
       "org.typelevel" %%% "munit-cats-effect" % "2.1.0", // TODO 2.1.0 depends on cats-effect 3.6.0
-      "org.typelevel" %%% "log4cats-testing" % "2.7.0",
+      "org.typelevel" %%% "log4cats-testing" % "2.7.1",
     ),
   ).dependsOn(ko_cats)
   .enablePlugins(BuildInfoPlugin)
