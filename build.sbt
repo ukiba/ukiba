@@ -149,7 +149,15 @@ lazy val ko_fs2_xml = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_f
     buildInfoPackage := "jp.ukiba.koneko.ko_fs2.xml",
 
     libraryDependencies ++= Seq(
-      "org.gnieh" %% "fs2-data-xml" % "1.12.0",
+      "org.gnieh" %% "fs2-data-xml" % "1.12.0"
+        /*
+          Avoid the following warning
+
+              [warn] package scala contains object and package with same name: caps.
+              [warn] This indicates that there are several versions of the Scala standard library on the classpath.
+              [warn] The build should be reconfigured so that only one version of the standard library is on the classpath.
+        */
+        exclude("org.scala-lang", "scala3-library_3"), // fs2-data-xml 1.12.0 depends on scala3-library_3 3.3.6
     ),
   ).dependsOn(ko_fs2, ko_munit % "test")
   .enablePlugins(BuildInfoPlugin)
