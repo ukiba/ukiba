@@ -11,8 +11,8 @@ import java.time.Instant
 
 package object ko_java:
   extension (str: String)
-    def utf8Bytes : Array[Byte] = str.getBytes(UTF_8)
-    def utf16Bytes: Array[Byte] = str.getBytes(UTF_16) // Java native encoding
+    def utf8 : Array[Byte] = str.getBytes(UTF_8)
+    def utf16: Array[Byte] = str.getBytes(UTF_16) // Java native encoding
 
     def countRight(pred: Char => Boolean): Int =
       @tailrec def loop(count: Int, lastIndex: Int): Int =
