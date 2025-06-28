@@ -214,7 +214,11 @@ lazy val ko_html = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_html
   )
   .jsSettings(
     jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv(),
-  ).dependsOn(ko_cats)
+  )
+  .jvmSettings(
+    Test / skip := true,
+  )
+  .dependsOn(ko_cats)
   .enablePlugins(BuildInfoPlugin)
 
 lazy val ko_cats = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_cats"))
