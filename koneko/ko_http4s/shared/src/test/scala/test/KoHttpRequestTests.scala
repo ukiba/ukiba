@@ -55,27 +55,27 @@ class KoHttpRequestTests extends KoCatsEffectSuite:
           for
             respBody <- client.run(api.GET(path"12561").acceptJson[PostCode]).decodeSuccess.toBody
           yield
-            assertEquals(circe.parser.decode[PostCode](expected).toOption.get, respBody)
+            assertEquals(respBody, circe.parser.decode[PostCode](expected).toOption.get)
 
         test("AST"):
           for
             respBody <- client.run(api.GET(path"12561").acceptJson[circe.Json]).decodeSuccess.toBody
           yield
-            assertEquals(circe.parser.parse(expected).toOption.get, respBody)
+            assertEquals(respBody, circe.parser.parse(expected).toOption.get)
 
 
       test("String"):
         for
           respBody <- client.run(api.GET(path"12561").acceptString).decodeSuccess.toBody
         yield
-          assertEquals(expected, respBody)
+          assertEquals(respBody, expected)
 
       test("Binary"):
         for
           respBody <- client.run(api.GET(path"12561").acceptByteVector).decodeSuccess.toBody
           logged <- printLoggedDebug
         yield
-          assertEquals(expected.getBytes(StandardCharsets.UTF_8).toSeq, respBody.toSeq)
+          assertEquals(respBody.toSeq, expected.getBytes(StandardCharsets.UTF_8).toSeq)
 
     test("404"):
       for
