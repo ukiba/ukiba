@@ -112,14 +112,14 @@ class KoHttpRequestTests extends KoCatsEffectSuite:
       assertEquals(req.headers.get[`Content-Type`],
           Some(`Content-Type`(MediaType.multipartType("form-data", Some(boundary.value)))))
 
-  // https://www.postman.com/cs-demo/public-rest-apis/request/lkq86jf/films
-  nest("ghibliapi.herokuapp.com"):
-    val api = KoHttpRequest[F].withUri(uri"https://ghibliapi.herokuapp.com/")
+  // https://httpbin.org/
+  nest("https://httpbin.org/"):
+    val api = KoHttpRequest[F].withUri(uri"https://httpbin.org/")
 
     test("503"):
       for
-        ex <- client.run(api.GET(path"films")).decodeSuccess.toBody
+        ex <- client.run(api.GET(path"status/503")).decodeSuccess.toBody
             .intercept[KoHttpResponse.UnexpectedStatusAndEntity]
       yield
         assertEquals(ex.status, Status.ServiceUnavailable)
-        assert(ex.entity.startsWith("<!DOCTYPE html>"))
+        assertEquals(ex.entity, "")
