@@ -92,12 +92,12 @@ class KoHttpRequestTests extends KoCatsEffectSuite:
       import io.circe.generic.auto.*
 
       test("class"):
-        val req = KoHttpRequest[F].withEntity(Foo("bar0"))
+        val req = KoHttpRequest[F].withBody(Foo("bar0"))
         assertEquals(req.headers.get[`Content-Type`],
             Some(`Content-Type`(MediaType.application.json)))
 
       test("AST"):
-        val req = KoHttpRequest[F].withEntity(Foo("bar0").asJson)
+        val req = KoHttpRequest[F].withBody(Foo("bar0").asJson)
         assertEquals(req.headers.get[`Content-Type`],
             Some(`Content-Type`(MediaType.application.json)))
 
@@ -108,7 +108,7 @@ class KoHttpRequestTests extends KoCatsEffectSuite:
 
     test("Multipart"):
       val boundary = Boundary("boundary00")
-      val req = KoHttpRequest[F].withEntity(Multipart(Vector(Part.formData("name00", "value00")), boundary))
+      val req = KoHttpRequest[F].withBody(Multipart(Vector(Part.formData("name00", "value00")), boundary))
       assertEquals(req.headers.get[`Content-Type`],
           Some(`Content-Type`(MediaType.multipartType("form-data", Some(boundary.value)))))
 
