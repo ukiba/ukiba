@@ -9,7 +9,7 @@ class HtmlInterpolatorTests extends munit.FunSuite:
     //html"<div>Hello $x</div>"
 
     val y = 3
-    html"<div>${x}A${y}B9$x</div>"
+    assertEquals(html"<div>${x}A${y}B9$x</div>".outerHTML, "<div>世界A3B9世界</div>")
 
 /* Only compiles in js
   test("input"):
@@ -18,44 +18,45 @@ class HtmlInterpolatorTests extends munit.FunSuite:
 */
 
   test("trailingSpaces"):
-    html"<div></div> "
+    assertEquals(html"<div></div> ".outerHTML, "<div></div>")
 
   test("nested element"):
-    html"<p><strong>bold texts</strong></p>"
+    assertEquals(html"<p><strong>bold texts</strong></p>".outerHTML, "<p><strong>bold texts</strong></p>")
 
   test("mixed content"):
-    html"<p>a<b>b</b>c<i></i></p>"
-    html"<h1 style=s0>left<b>bold</b>right</h1>"
+    assertEquals(html"<p>a<b>b</b>c<i></i></p>".outerHTML, "<p>a<b>b</b>c<i></i></p>")
+    assertEquals(html"<h1 style=s0>left<b>bold</b>right</h1>".outerHTML, """<h1 style="">left<b>bold</b>right</h1>""") // FIXME
 
   test("self-closing"):
-    html"<div/>"
+    assertEquals(html"<div/>".outerHTML, "<div></div>")
 
   test("void elements"):
-    html"<input>"
+    assertEquals(html"<input>".outerHTML, "<input>")
 
   test("elemArg1"):
     val text = html"<input type=text>"
     val checkbox = html"<input type=checkbox>"
-    val div = html"""<div style="color: #000000">text: $text<br>checkbox: $checkbox</div>"""
+    assertEquals(html"""<div style="color: #000000">text: $text<br>checkbox: $checkbox</div>""".outerHTML,
+        """<div style="color: rgb(0, 0, 0);">text: <input type="text"><br>checkbox: <input type="checkbox"></div>""")
 
   // attribute
 
   test("empty"):
-    html"<input disabled>"
-    html"<input disabled/>"
-    html"<input disabled />"
+    assertEquals(html"<input disabled>"  .outerHTML, """<input disabled="">""")
+    assertEquals(html"<input disabled/>" .outerHTML, """<input disabled="">""")
+    assertEquals(html"<input disabled />".outerHTML, """<input disabled="">""")
 
   test("unquoted"):
-    html"<input value=yes>"
-    html"<input value=yes/>"
-    html"<input value = yes />"
+    assertEquals(html"<input value=yes>"    .outerHTML, """<input>""") // FIXME
+    assertEquals(html"<input value=yes/>"   .outerHTML, """<input>""") // FIXME
+    assertEquals(html"<input value = yes />".outerHTML, """<input>""") // FIXME
 
   test("single-quoted"):
-    html"<input type='checkbox'>"
-    html"<input type='checkbox'/>"
-    html"<input type = 'checkbox' />"
+    assertEquals(html"<input type='checkbox'>"    .outerHTML, """<input type="checkbox">""")
+    assertEquals(html"<input type='checkbox'/>"   .outerHTML, """<input type="checkbox">""")
+    assertEquals(html"<input type = 'checkbox' />".outerHTML, """<input type="checkbox">""")
 
   test("double-quoted"):
-    html"""<input name="be evil">"""
-    html"""<input name="be evil"/>"""
-    html"""<input name = "be evil" />"""
+    assertEquals(html"""<input name="be evil">"""    .outerHTML, """<input name="be evil">""")
+    assertEquals(html"""<input name="be evil"/>"""   .outerHTML, """<input name="be evil">""")
+    assertEquals(html"""<input name = "be evil" />""".outerHTML, """<input name="be evil">""")
