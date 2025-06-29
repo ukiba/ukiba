@@ -113,8 +113,17 @@ class KoHttpRequestTests extends KoCatsEffectSuite:
           Some(`Content-Type`(MediaType.multipartType("form-data", Some(boundary.value)))))
 
   // https://httpbin.org/
-  nest("https://httpbin.org/"):
+  nest("httpbin.org"):
     val api = KoHttpRequest[F].withUri(uri"https://httpbin.org/")
+
+    test("405"):
+      for
+        ex <- client.run(api.GET(path"post")).decodeSuccess.toBody
+            .intercept[KoHttpResponse.UnexpectedStatusAndEntity]
+      yield
+        assertEquals(ex.status, Status.MethodNotAllowed)
+        assert(ex.entity.startsWith("<!DOCTYPE HTML PUBLIC "))
+
 
     test("503"):
       for
@@ -123,3 +132,23 @@ class KoHttpRequestTests extends KoCatsEffectSuite:
       yield
         assertEquals(ex.status, Status.ServiceUnavailable)
         assertEquals(ex.entity, "")
+
+  // https://jsonplaceholder.typicode.com/
+  nest("jsonplaceholder.typicode.com"):
+    val api = KoHttpRequest[F].withUri(uri"https://jsonplaceholder.typicode.com/")
+
+    import org.http4s.circe.CirceEntityDecoder.*
+    import io.circe.generic.auto.*
+
+    case class Todo(
+      userId: Int,
+      id: Int,
+      title: String,
+      completed: Boolean,
+    )
+
+    test("todos/1"):
+      for
+        respBody <- client.run(api.GET(path"todos/1").acceptJson[Todo]).decodeSuccess.toBody
+      yield
+        assertEquals(respBody, Todo(1, 1, "delectus aut autem", false))
