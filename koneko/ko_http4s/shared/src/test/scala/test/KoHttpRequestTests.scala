@@ -27,10 +27,10 @@ class KoHttpRequestTests extends KoCatsEffectSuite:
 
   given Logger[F] = LoggerFactory[F].getLogger
 
-  // https://www.postman.com/cs-demo/public-rest-apis/request/t0uwz9o/zip-code-lookup
+  // https://api.zippopotam.us/
   nest("zippopotam"):
-    val api = KoHttpRequest[F].withUri(uri"http://api.zippopotam.us/us/")
-    val expected = """{"post code": "12561", "country": "United States", "country abbreviation": "US", "places": [{"place name": "New Paltz", "longitude": "-74.1092", "state": "New York", "state abbreviation": "NY", "latitude": "41.7464"}]}"""
+    val api = KoHttpRequest[F].withUri(uri"http://api.zippopotam.us/US/")
+    val expected = """{"country": "United States", "country abbreviation": "US", "post code": "12561", "places": [{"place name": "New Paltz", "longitude": "-74.1092", "latitude": "41.7464", "state": "New York", "state abbreviation": "NY"}]}"""
 
     nest("decode"):
       nest("JSON"):
