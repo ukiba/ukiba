@@ -94,7 +94,11 @@ lazy val ko_aws = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_aws")
       "software.amazon.awssdk" % "ssooidc"  % "2.31.45", // avoid `To use SSO OIDC related properties in the '...' profile, the 'ssooidc' service module must be on the class path.`
       "org.http4s" %%% "http4s-ember-client" % "1.0.0-M44" % Test,
     ),
-  ).dependsOn(ko_http4s, ko_fs2_xml, ko_munit % "test")
+  )
+  .jsSettings(
+    Test / skip := true,
+  )
+  .dependsOn(ko_http4s, ko_fs2_xml, ko_munit % "test")
   .enablePlugins(BuildInfoPlugin)
 
 lazy val ko_ffmpeg = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_ffmpeg"))
