@@ -18,7 +18,7 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.scalaJSModuleKind
 import org.scalajs.linker.interface.ModuleKind
 inThisBuild(Seq( // apply to every project in the build
   scalaJSLinkerConfig        ~= (_.withModuleKind(ModuleKind.ESModule)),
-  Test / scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.ESModule))
+  Test / scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.ESModule)),
 ))
 
 // use Seq rather than ThisBuild for the default
@@ -47,6 +47,8 @@ lazy val buildInfoSettings = Seq(
     BuildInfoOption.Traits("jp.ukiba.koinu.build.SbtBuildInfo"),
   )
 )
+
+val npmInstall = taskKey[File]("populate node_modules directory")
 
 lazy val ukiba = crossProject(JSPlatform, JVMPlatform).in(file("build/ukiba"))
   .settings(
@@ -221,6 +223,13 @@ lazy val ko_html = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_html
   )
   .jsSettings(
     jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv(),
+    Test / test := (Test / test)
+      .dependsOn(tools / npmInstall)
+      .value,
+
+    // scala-js-env-jsdom-nodejs has no support for ES modules yet
+    // https://github.com/scala-js/scala-js-env-jsdom-nodejs/issues/56
+    Test / scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.NoModule)),
   )
   .jvmSettings(
     Test / skip := true,
@@ -277,6 +286,17 @@ lazy val build = crossProject(JSPlatform, JVMPlatform).in(file("koinu/build"))
     buildInfoPackage := "jp.ukiba.koinu.build",
   )
   .enablePlugins(BuildInfoPlugin)
+
+lazy val tools = project.in(file("build/ukiba"))
+  .settings(
+    npmInstall := {
+      implicit val log = streams.value.log
+      val dir = file("node_modules")
+      if (!dir.exists)
+        npm("install", "--silent")
+      dir
+    },
+  )
 
 // Customize sbt
 Global / onChangedBuildSource := ReloadOnSourceChanges // reload build.sbt automatically
