@@ -260,7 +260,7 @@ lazy val ko_scodec_bits = crossProject(JSPlatform, JVMPlatform).in(file("koinu/k
     buildInfoPackage := "jp.ukiba.koinu.ko_scodec_bits",
 
     libraryDependencies ++= Seq(
-      "org.scodec" %%% "scodec-bits" % "1.2.1",
+      "org.scodec" %%% "scodec-bits" % "1.2.4",
     ),
   ).dependsOn(ko_java)
   .enablePlugins(BuildInfoPlugin)
