@@ -110,8 +110,8 @@ lazy val ko_ffmpeg = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_ff
     libraryDependencies ++= Seq(
       // https://github.com/bytedeco/javacpp-presets/tree/master/ffmpeg
       // "org.bytedeco" % "ffmpeg-platform" % "7.1-1.5.11", // for all the platforms, including android and ios
-      "org.bytedeco" % "ffmpeg" % "7.1-1.5.11", // shared classes
-      "org.bytedeco" % "ffmpeg" % "7.1-1.5.11"
+      "org.bytedeco" % "ffmpeg" % "7.1.1-1.5.12", // shared classes
+      "org.bytedeco" % "ffmpeg" % "7.1.1-1.5.12"
            classifier "linux-arm64" // armhf for 32bit
            //classifier "linux-x86_64"
            //classifier "windows-x86_64"
