@@ -26,7 +26,7 @@ inThisBuild(Seq( // apply to every project in the build
 lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
     "org.typelevel" %% "log4cats-slf4j" % "2.7.1" % Test,
-    "org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.25.0" % Test,
+    "org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.25.1" % Test,
   ),
 
   run / fork := true,
