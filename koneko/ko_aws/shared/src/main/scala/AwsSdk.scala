@@ -21,7 +21,7 @@ object AwsSdk:
   def defaultCredentials[F[_]: Async](using log: Logger[F]): F[Aws.Credentials] =
     val F = Async[F]
     F.blocking:
-      DefaultCredentialsProvider.create.resolveCredentials match
+      DefaultCredentialsProvider.builder.build.resolveCredentials match
         case creds: AwsSessionCredentials => Aws.Credentials.WithSession(
           creds.accessKeyId,
           creds.secretAccessKey,
