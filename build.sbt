@@ -96,9 +96,6 @@ lazy val ko_aws = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_aws")
       "org.http4s" %%% "http4s-ember-client" % "1.0.0-M44" % Test,
     ),
   )
-  .jsSettings(
-    Test / skip := true,
-  )
   .dependsOn(ko_http4s, ko_fs2_xml, ko_munit % "test")
   .enablePlugins(BuildInfoPlugin)
 
