@@ -77,7 +77,7 @@ object XmlParser:
     case `ev`  => unit
     case other => fail(s"Unexpected $other: expected $ev")
 
-  /** Apply the given partial function */
+  /** Apply the given partial function (pattern matching) */
   def optPat[F[_], A](pf: PartialFunction[XmlEvent, Parser[F, A]]): Parser[F, Option[A]] = Parser:
     _.pull.uncons1.flatMap:
       case Some((hd, tl)) =>
@@ -113,18 +113,29 @@ object XmlParser:
     case XmlString(str, _) => pure(str.trim)
     case other             => fail(s"Unexpected $other: expected text")
 
-  def textOnlyTag[F[_]: RaiseThrowable](name: String): Parser[F, String] =
+  def textOpt[F[_]: RaiseThrowable]: Parser[F, Option[String]] =
+    optPat:
+      case head @ XmlString(str, _) => pure(str.trim)
+
+  def textNonEmptyOnlyTag[F[_]: RaiseThrowable](name: String): Parser[F, String] =
     for
       _   <- startTag(name)
       str <- text
       _   <- endTag(name)
     yield str
 
+  def textOnlyTag[F[_]: RaiseThrowable](name: String): Parser[F, Option[String]] =
+    for
+      _   <- startTag(name)
+      str <- textOpt
+      _   <- endTag(name)
+    yield str
+
   def textOnlyTagOpt[F[_]: RaiseThrowable](name: String): Parser[F, Option[String]] =
     optPat:
-      case head @ StartTag(QName(_, name), _, _) =>
+      case head @ StartTag(QName(_, `name`), _, _) =>
         for
-          str <- text
+          str <- textOpt.map(_.mkString)
           _   <- endTag(name)
         yield str
 

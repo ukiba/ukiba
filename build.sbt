@@ -5,6 +5,8 @@ ThisBuild / organization := "jp.ukiba"
 // Defining `ThisBuild / scalaVersion` avoids sbt-updates 0.6.3 to report update for scala-library
 ThisBuild / scalaVersion := "3.7.1"  
 ThisBuild / scalacOptions ++= Seq(
+  "-preview", // https://www.scala-lang.org/api/current/docs/docs/reference/preview/better-fors.html
+
   "-Xmax-inlines", "64",
 
   // the default settings from https://scastie.scala-lang.org
@@ -33,12 +35,10 @@ lazy val commonSettings = Seq(
   run / fork := true,
   run / baseDirectory := file("."),
 
-/*
   Test / fork := true,
   Test / javaOptions ++= Seq(
     "-Dcats.effect.tracing.buffer.size=8192", // the default 16 would not capture the entire stack trace
   ),
-*/
 )
 
 lazy val buildInfoSettings = Seq(
