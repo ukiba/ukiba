@@ -10,6 +10,7 @@ import fs2.{Stream, Pipe, Pull, text}
 import org.typelevel.log4cats.Logger
 import cats.effect.{Sync, Async}
 import cats.syntax.all.*
+import cats.data.Chain
 
 import java.time.Instant
 
@@ -42,11 +43,11 @@ package object s3:
     https://docs.aws.amazon.com/AmazonS3/latest/API/WhatsNew.html says
     the latest API version is 2006-03-01 as of 2025-05.
   */
-  import XmlParser.{Parser, next, expect, repPat, startTag, endTag, textOnlyTag, textOnlyTagOpt}
+  import XmlParser.{Parser, expect, repPat, startTag, endTag, textOnlyTag, textOnlyTagOpt}
 
   case class ListAllMyBucketsResult(
     Owner: CanonicalUser,
-    Buckets: Seq[ListAllMyBucketsEntry],
+    Buckets: Chain[ListAllMyBucketsEntry],
     ContinuationToken: Option[String],
     Prefix: Option[String],
   )
@@ -62,7 +63,7 @@ package object s3:
       yield ListAllMyBucketsResult(owner, buckets.Bucket, continuationToken, prefix)
 
   case class ListAllMyBucketsList(
-    Bucket: Seq[ListAllMyBucketsEntry],
+    Bucket: Chain[ListAllMyBucketsEntry],
   )
   object ListAllMyBucketsList:
     def parser[F[_]: Sync](local: String): Parser[F, ListAllMyBucketsList] =
@@ -82,7 +83,6 @@ package object s3:
   object ListAllMyBucketsEntry:
     def parser[F[_]: Sync](head: StartTag): Parser[F, ListAllMyBucketsEntry] =
       for
-        _            <- next // should be the same as head
         name         <- textOnlyTag[F]("Name")
         creationDate <- textOnlyTag[F]("CreationDate")
         bucketRegion <- textOnlyTagOpt[F]("BucketRegion") // present when Request.`bucket-region` is present

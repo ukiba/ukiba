@@ -28,7 +28,7 @@ class ListBucketsTests extends KoCatsEffectSuite:
         resp <- ListBuckets(profile)(http)(req)
       yield
         println(s"resp = $resp")
-        println(s"  buckets = ${resp.Buckets.mkString("\n            ")}")
+        //println(s"  buckets = ${resp.Buckets.mkString("\n            ")}")
 
     test("bucket-region"):
       for
@@ -38,7 +38,7 @@ class ListBucketsTests extends KoCatsEffectSuite:
         resp <- ListBuckets(profile)(http)(req)
       yield
         println(s"resp = $resp")
-        println(s"  buckets = ${resp.Buckets.mkString("\n            ")}")
+        //println(s"  buckets = ${resp.Buckets.mkString("\n            ")}")
 
     test("max-buckets"):
       for
@@ -48,4 +48,4 @@ class ListBucketsTests extends KoCatsEffectSuite:
         resp <- ListBuckets(profile)(http)(req)
       yield
         println(s"resp = $resp")
-        println(s"  buckets = ${resp.Buckets.mkString("\n            ")}")
+        //println(s"  buckets = ${resp.Buckets.mkString("\n            ")}")
