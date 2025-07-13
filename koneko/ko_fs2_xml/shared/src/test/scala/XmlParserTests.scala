@@ -4,6 +4,7 @@ package xml
 
 import ko_munit.KoCatsEffectSuite
 
+import fs2.data.xml, xml.{XmlEvent, QName}, XmlEvent.StartTag
 import fs2.data.xml
 import fs2.Stream
 import cats.syntax.all.*
@@ -27,7 +28,9 @@ class XmlParserTests extends KoCatsEffectSuite:
       def parser: Parser[F, Persons] =
         for
           _       <- startTag[F]("persons")
-          persons <- Person.parser.repUntilEndTag("persons")
+          persons <- repPat:
+            case head @ StartTag(QName(_, "person"), _, _) => Person.parser
+          _       <- endTag[F]("persons")
         yield Persons(persons)
 
     test("<person>"):
