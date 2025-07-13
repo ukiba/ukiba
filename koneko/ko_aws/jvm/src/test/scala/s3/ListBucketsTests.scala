@@ -19,11 +19,33 @@ class ListBucketsTests extends KoCatsEffectSuite:
 
   given Logger[F] = LoggerFactory[F].getLogger
 
-  test("no param"):
-    for
-      profile <- AwsSdk.defaultProfile[F]
-      http = KoHttpClient(client).withUri(endpointOf(profile.region))
-      req <- ListBuckets.Request().pure[F]
-      resp <- ListBuckets(profile)(http)(req)
-    yield
-      println(s"resp = $resp")
+  nest("params"):
+    test("none"):
+      for
+        profile <- AwsSdk.defaultProfile[F]
+        http = KoHttpClient(client).withUri(endpointOf(profile.region))
+        req <- ListBuckets.Request().pure[F]
+        resp <- ListBuckets(profile)(http)(req)
+      yield
+        println(s"resp = $resp")
+        println(s"  buckets = ${resp.Buckets.mkString("\n            ")}")
+
+    test("bucket-region"):
+      for
+        profile <- AwsSdk.defaultProfile[F]
+        http = KoHttpClient(client).withUri(endpointOf(profile.region))
+        req <- ListBuckets.Request(`bucket-region` = Some(AwsRegion.Tokyo)).pure[F]
+        resp <- ListBuckets(profile)(http)(req)
+      yield
+        println(s"resp = $resp")
+        println(s"  buckets = ${resp.Buckets.mkString("\n            ")}")
+
+    test("max-buckets"):
+      for
+        profile <- AwsSdk.defaultProfile[F]
+        http = KoHttpClient(client).withUri(endpointOf(profile.region))
+        req <- ListBuckets.Request(`max-buckets` = Some(1)).pure[F]
+        resp <- ListBuckets(profile)(http)(req)
+      yield
+        println(s"resp = $resp")
+        println(s"  buckets = ${resp.Buckets.mkString("\n            ")}")

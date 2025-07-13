@@ -5,7 +5,7 @@ import jp.ukiba.koneko.ko_http4s.client.KoHttpClient
 import jp.ukiba.koneko.ko_fs2.xml.{XmlParser, XmlTextTrimmer, XmlEventLog}
 
 import org.http4s.Uri
-import fs2.data.xml, xml.{XmlEvent, QName}
+import fs2.data.xml, xml.{XmlEvent, QName}, XmlEvent.{StartTag, EndTag}
 import fs2.{Stream, Pipe, Pull, text}
 import org.typelevel.log4cats.Logger
 import cats.effect.{Sync, Async}
@@ -42,7 +42,7 @@ package object s3:
     https://docs.aws.amazon.com/AmazonS3/latest/API/WhatsNew.html says
     the latest API version is 2006-03-01 as of 2025-05.
   */
-  import XmlParser.{Parser, startTag, endTag, textOnlyTag}
+  import XmlParser.{Parser, next, expect, repPat, startTag, endTag, textOnlyTag, textOnlyTagOpt}
 
   case class ListAllMyBucketsResult(
     Owner: CanonicalUser,
@@ -53,12 +53,12 @@ package object s3:
   object ListAllMyBucketsResult:
     def parser[F[_]: Sync]: Parser[F, ListAllMyBucketsResult] =
       for
-        _       <- startTag[F]("ListAllMyBucketsResult")
-        owner   <- CanonicalUser.parser("Owner")
-        buckets <- ListAllMyBucketsList.parser("Buckets")
-        continuationToken = None // FIXME
-        prefix = None // FIXME
-        _       <- endTag[F]("ListAllMyBucketsResult")
+        _                 <- startTag[F]("ListAllMyBucketsResult")
+        owner             <- CanonicalUser.parser("Owner")
+        buckets           <- ListAllMyBucketsList.parser("Buckets")
+        continuationToken <- textOnlyTagOpt[F]("ContinuationToken")
+        prefix            <- textOnlyTagOpt[F]("Prefix")
+        _                 <- endTag[F]("ListAllMyBucketsResult")
       yield ListAllMyBucketsResult(owner, buckets.Bucket, continuationToken, prefix)
 
   case class ListAllMyBucketsList(
@@ -68,7 +68,9 @@ package object s3:
     def parser[F[_]: Sync](local: String): Parser[F, ListAllMyBucketsList] =
       for
         _      <- startTag[F](local)
-        bucket <- ListAllMyBucketsEntry.parser("Bucket").repUntilEndTag(local)
+        bucket <- repPat:
+          case head @ StartTag(QName(_, "Bucket"), _, _) => ListAllMyBucketsEntry.parser(head)
+        _      <- endTag[F](local)
       yield ListAllMyBucketsList(bucket)
 
   // https://docs.aws.amazon.com/AmazonS3/latest/API/API_Bucket.html
@@ -78,13 +80,14 @@ package object s3:
     BucketRegion: Option[String],
   )
   object ListAllMyBucketsEntry:
-    def parser[F[_]: Sync](local: String): Parser[F, ListAllMyBucketsEntry] =
+    def parser[F[_]: Sync](head: StartTag): Parser[F, ListAllMyBucketsEntry] =
       for
-        _            <- startTag[F](local)
+        _            <- next // should be the same as head
         name         <- textOnlyTag[F]("Name")
         creationDate <- textOnlyTag[F]("CreationDate")
-        _            <- endTag[F](local)
-      yield ListAllMyBucketsEntry(name, creationDate, None)
+        bucketRegion <- textOnlyTagOpt[F]("BucketRegion") // present when Request.`bucket-region` is present
+        _            <- expect[F](EndTag(head.name))
+      yield ListAllMyBucketsEntry(name, creationDate, bucketRegion)
 
   case class CanonicalUser(
     ID: String,
@@ -100,7 +103,8 @@ package object s3:
       yield CanonicalUser(id, Some(displayName))
 
   object ListBuckets:
-    def apply[F[_]: Async](profile: Aws.Profile)(http: KoHttpClient[F, ?])(req: Request)
+    def apply[F[_]: Async](profile: Aws.Profile)(http: KoHttpClient[F, ?])(req: Request,
+        dontRepeatWithContinuationToken: Boolean = false)
         (using Logger[F]): F[Response] =
       import profile.{credentials, region}
       for
@@ -121,6 +125,13 @@ package object s3:
             .through(XmlEventLog.pipe)
             .through(XmlParser.doc(ListAllMyBucketsResult.parser).pipe)
             .compile.onlyOrError
+
+        result <- (result.ContinuationToken, dontRepeatWithContinuationToken) match
+          case (Some(continuationToken), false) => apply(profile)(http)
+              (req.copy(`continuation-token` = Some(continuationToken)), false)
+              .map(next => result.copy(Buckets = result.Buckets ++ next.Buckets, ContinuationToken = None))
+          case _ => result.pure[F]
+
       yield
         result
 

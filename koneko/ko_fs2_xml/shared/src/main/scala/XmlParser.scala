@@ -36,18 +36,6 @@ object XmlParser:
       run(st).flatMap: (a, rest) =>
         f(a).run(rest)
 
-    def repUntilEndTag(local: String): Parser[F, Seq[A]] =
-      def loop(results: Seq[A]): Parser[F, Seq[A]] = Parser: st =>
-        st.pull.uncons1.flatMap:
-          case Some((EndTag(QName(_, `local`)), tl)) => Pull.pure((results, tl))
-          case Some((hd, tl)) =>
-            val st2: Stream[F, XmlEvent] = tl.cons1(hd)
-            run(st2).flatMap: (a, rest) =>
-              loop(results :+ a).run(rest)
-          case None =>
-            Pull.raiseError(ParseException(s"End of input: one of the expectation is </$local>"))
-      loop(Nil)
-
   def pure[F[_]: RaiseThrowable, A](a: A): Parser[F, A] = Parser: st =>
     Pull.pure((a, st))
 
@@ -64,6 +52,39 @@ object XmlParser:
   def expect[F[_]: RaiseThrowable](ev: XmlEvent): Parser[F, Unit] = next.flatMap:
     case `ev`  => unit
     case other => fail(s"Unexpected $other: expected $ev")
+
+  /** Apply the given partial function */
+  def optPat[F[_]: RaiseThrowable, A](pf: PartialFunction[XmlEvent, Parser[F, A]]): Parser[F, Option[A]] = Parser:
+    _.pull.uncons1.flatMap:
+      case Some((hd, tl)) =>
+        // For all partial function literals the compiler generates an `applyOrElse` implementation which
+        // avoids double evaluation of pattern matchers and guards.
+        // https://github.com/scala/scala/blob/2.13.x/src/library/scala/PartialFunction.scala#L205
+        hd match // no double evaluation like `applyOrElse`
+          case pf(parser) =>
+            parser.run(tl.cons1(hd)).flatMap: (a, rest) =>
+              Pull.pure(Some(a), rest)
+
+          case _ => Pull.pure(None, tl.cons1(hd)) // end of matches
+
+      case None => Pull.pure(None, Stream.empty) // end of stream
+
+  /** Apply the given partial function repeatedly, until the partial functions does not match */
+  def repPat[F[_]: RaiseThrowable, A](pf: PartialFunction[XmlEvent, Parser[F, A]]): Parser[F, Seq[A]] =
+    // TODO can optPat be reused?
+    def loop(results: Seq[A]): Parser[F, Seq[A]] = Parser:
+      _.pull.uncons1.flatMap:
+        case Some((hd, tl)) =>
+          hd match
+            case pf(parser) =>
+              parser.run(tl.cons1(hd)).flatMap: (a, rest) =>
+                loop(results :+ a).run(rest)
+
+            case _ => Pull.pure(results, tl.cons1(hd)) // end of matches
+
+        case None => Pull.pure(results, Stream.empty) // end of stream
+
+    loop(Nil)
 
   def startTag[F[_]: RaiseThrowable](local: String): Parser[F, Unit] = next.flatMap:
     case StartTag(QName(_, `local`), _, _) => unit
@@ -83,6 +104,15 @@ object XmlParser:
       str <- text
       _   <- endTag(name)
     yield str
+
+  def textOnlyTagOpt[F[_]: RaiseThrowable](name: String): Parser[F, Option[String]] =
+    optPat:
+      case head @ StartTag(QName(_, name), _, _) =>
+        for
+          _            <- next // should be the same as head
+          str <- text
+          _   <- endTag(name)
+        yield str
 
   def doc[F[_]: RaiseThrowable, A](p: Parser[F, A]): Parser[F, A] =
     for
