@@ -4,10 +4,10 @@ package ko_aws
 import jp.ukiba.koneko.ko_http4s.client.KoHttpClient
 import jp.ukiba.koneko.ko_fs2.xml.{XmlParser, XmlTextTrimmer, XmlEventLog}
 
-import org.http4s.{Uri, QueryParamEncoder, Header, Headers}
+import org.http4s.{Uri, QueryParamEncoder, Header, Headers, Status, MediaType}
 import org.http4s.headers.{ETag, `Cache-Control`, `Content-Disposition`, `Content-Encoding`,
                           `Content-Language`, `Content-Length`, `Content-Type`, `Expires`,
-                          `If-Match`, `If-None-Match`}
+                          `If-Match`, `If-None-Match`, `If-Modified-Since`, `If-Unmodified-Since`}
 import org.http4s.syntax.all.*
 import fs2.data.xml, xml.{XmlEvent, QName}, XmlEvent.{StartTag, EndTag}
 import fs2.{Stream, Pipe, Pull, text}
@@ -456,6 +456,90 @@ package object s3:
       `x-amz‑request‑id`     : String,
       `x-amz‑id‑2`           : String,
     ) extends S3Response
+
+  object HeadObject:
+    def apply[F[_]: Async](profile: Aws.Profile)(http: KoHttpClient[F, ?])(req: Request)
+        (using log: Logger[F]): F[Response] =
+      import profile.{credentials, region}
+      for
+        http <- http.prependHostName(s"${req.bucket}.").HEAD(req.key)
+          .withParamOpt("partNumber", req.partNumber)
+          .withParamOpt("versionId" , req.versionId)
+          .withHeaderOpt(req.`If-Match`           .map(_.toRaw1))
+          .withHeaderOpt(req.`If-None-Match`      .map(_.toRaw1))
+          .withHeaderOpt(req.`If-Modified-Since`  .map(_.toRaw1))
+          .withHeaderOpt(req.`If-Unmodified-Since`.map(_.toRaw1))
+          .evalMapRequest(AwsSigV4.`UNSIGNED-PAYLOAD`(_, credentials, region, "s3"))
+        result <- http.run.expectStatus(status => status.responseClass == Status.Successful ||
+            status == Status.NotFound).resource.use: resp =>
+          val label = "HeadObject: response"
+          inline def getSingleTextRequired(key: CIString) =
+              resp.headers.getSingleTextRequired(key, label)
+          inline def getSingleText(key: CIString) =
+              resp.headers.getSingleText(key, label)
+          inline def getSingleBoolean(key: CIString) =
+              resp.headers.getSingleBoolean(key, label)
+          for
+            ETag                    <- resp.headers.get[ETag].pure
+            `Content-Length`        <- resp.headers.get[`Content-Length`].pure
+            `Content-Type`          <- resp.headers.get[`Content-Type`] match // TODO hard to generalize
+              case Some(value) => value.pure
+              case None        => log.warn(s"$label: Content-Type is missing; treating it as the empty")
+                                      .as(`Content-Type`(MediaType.application.`octet-stream`))
+            `x-amz-delete-marker`   <- getSingleBoolean     (ci"x-amz-delete-marker")
+            `x-amz-version-id`      <- getSingleText        (ci"x-amz-version-id")
+            `x-amz-request-charged` <- getSingleText        (ci"x-amz-request-charged")
+            `x-amz‑request‑id`      <- getSingleTextRequired(ci"x-amz-request-id")
+            `x-amz‑id‑2`            <- getSingleTextRequired(ci"x-amz-id-2")
+          yield
+            resp.status match
+              case Status.NotFound => require(ETag.isEmpty)
+              case _               => require(ETag.nonEmpty)
+            Response(
+              ETag,
+              `Content-Length`,
+              `Content-Type`,
+              `x-amz-delete-marker`,
+              `x-amz-version-id`,
+              `x-amz-request-charged`,
+              `x-amz‑request‑id`,
+              `x-amz‑id‑2`,
+            )
+
+      yield
+        result
+
+    case class Request(
+      bucket               : String,
+      key                  : String,
+      partNumber           : Option[String               ] = None,
+      versionId            : Option[String               ] = None,
+      `If-Match`           : Option[`If-Match`           ] = None,
+      `If-None-Match`      : Option[`If-None-Match`      ] = None,
+      `If-Modified-Since`  : Option[`If-Modified-Since`  ] = None,
+      `If-Unmodified-Since`: Option[`If-Unmodified-Since`] = None,
+      // response-cache-control
+      // response-content-disposition
+      // response-content-encoding
+      // response-content-language
+      // response-content-type
+      // response-expires
+      // x-amz-checksum-mode
+      // ...
+    )
+
+    case class Response(
+      ETag                   : Option[ETag],
+      `Content-Length`       : Option[`Content-Length`],
+      `Content-Type`         : `Content-Type`, // application/xml on error responses
+      //...
+      `x-amz-delete-marker`  : Option[Boolean],
+      `x-amz-version-id`     : Option[String],
+      `x-amz-request-charged`: Option[String],
+      `x-amz‑request‑id`     : String,
+      `x-amz‑id‑2`           : String,
+    ) extends S3Response:
+      def exists: Boolean = ETag.nonEmpty
 
   /*
    * 1. Unversioned bucket: permanently deletes the object

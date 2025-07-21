@@ -35,8 +35,14 @@ class ObjectTests extends AwsSuite:
       _ <- list1.Contents.parTraverseN(10): content =>
         DeleteObject(profile)(http)(DeleteObject.Request(bucket, content.Key))
 
-      put1 <- PutObject(profile)(http)(PutObject.Request(bucket, "random-256k", contentStream(256 * 1024, 1),
+      head1 <- HeadObject(profile)(http)(HeadObject.Request(bucket, "random-256k"))
+      _ = assert(!head1.exists)
+
+      put2 <- PutObject(profile)(http)(PutObject.Request(bucket, "random-256k", contentStream(256 * 1024, 1),
           `Content-Length` = Some(`Content-Length`(256 * 1024))))
+
+      head2 <- HeadObject(profile)(http)(HeadObject.Request(bucket, "random-256k"))
+      _ = assert(head2.exists)
 
       list2 <- ListObjectsV2(profile)(http)(ListObjectsV2.Request(bucket))
       _ = assertMatch(list2.Contents):
