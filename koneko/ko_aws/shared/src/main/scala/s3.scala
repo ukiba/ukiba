@@ -75,13 +75,12 @@ package object s3:
     def apply(o: Option[A]): Option[B] = o.map(conv)
 
   extension [F[_]: Sync] (headers: Headers)
-    def getSingleTextValue(key: CIString, label: String)(using Logger[F]): F[Option[String]] =
+    def getSingleText(key: CIString, label: String)(using log: Logger[F]): F[Option[String]] =
       headers.get(key) match
         case Some(nel) =>
           for
             _ <- if nel.tail.nonEmpty then
-              Logger[F].warn(s"$label: $key has more than one value: ${
-                  nel.iterator.map(_.value).mkString(", ")}")
+              log.warn(s"$label: $key has more than one value: ${nel.iterator.map(_.value).mkString(", ")}")
             else
               Sync[F].unit
           yield nel.head.value.pure
@@ -90,25 +89,30 @@ package object s3:
           None.pure
 
     /** Does not fail even if AWS stops sending the header */
-    def getSingleTextValueRequired(key: CIString, label: String)(using Logger[F]): F[String] =
+    def getSingleTextRequired(key: CIString, label: String)(using log: Logger[F]): F[String] =
       for
-        opt <- getSingleTextValue(key, label)
+        opt <- getSingleText(key, label)
         value <- opt match
           case Some(value) => value.pure
-          case None        => Logger[F].warn(s"$label: $key is missing; treating it as the empty").as("")
+          case None        => log.warn(s"$label: $key is missing; treating it as the empty").as("")
       yield value
 
     /** Does not fail even if AWS sends an unexpected value */
-    def getSingleBooleanValue(key: CIString, label: String)(using Logger[F]): F[Option[Boolean]] =
+    def getSingleBoolean(key: CIString, label: String)(using log: Logger[F]): F[Option[Boolean]] =
       for
-        opt <- getSingleTextValue(key, label)
+        opt <- getSingleText(key, label)
         value <- opt match
           case Some("true" ) => Some(true ).pure
           case Some("false") => Some(false).pure
-          case Some(other)   => Logger[F].warn(s"$label: $key: Unexpected value: $other; treating it as missing")
-                                    .as(None)
+          case Some(other)   => log.warn(s"$label: $key: Unexpected value: $other; treating it as missing").as(None)
           case None          => None.pure
       yield value
+
+  // MinIO (Vultr) and Wasabi seem to send both, but
+  // Cloudflare R2, Ceph Rados Gateway (RGW), and DigitalOcean Spaces seem to send only `x-amz‑request‑id`
+  trait S3Response:
+    def `x-amz‑request‑id`: String
+    def `x-amz‑id‑2`      : String
 
   /*
     The models could be generated with https://github.com/smithy-lang/smithy-java
@@ -258,7 +262,7 @@ package object s3:
       require(`max-buckets`.forall(num => 1 <= num && num <= 10000),
           s"max-buckets = ${`max-buckets`}")
 
-    type Response = ListAllMyBucketsResult
+    type Response = ListAllMyBucketsResult // TODO extends S3Response
 
   case class ListBucketResult(
     Name: String,
@@ -381,12 +385,12 @@ package object s3:
       require(`max-keys`.forall(num => 1 <= num),
           s"max-keys = ${`max-keys`}")
 
-    type Response = ListBucketResult
+    type Response = ListBucketResult // TODO extends S3Response
 
   object PutObject:
     def apply[F[_]: Async](profile: Aws.Profile)(http: KoHttpClient[F, ?])(req: Request[F],
         dontRepeatWithContinuationToken: Boolean = false)
-        (using Logger[F]): F[Response] =
+        (using log: Logger[F]): F[Response] =
       import profile.{credentials, region}
       require(req.`Content-Length`.nonEmpty, "the payload length must be known") // even when streaming chunks
       for
@@ -404,10 +408,20 @@ package object s3:
           .withHeaderOpt(req.`If-None-Match`      .map(_.toRaw1))
           .evalMapRequest(AwsSigV4.`UNSIGNED-PAYLOAD`(_, credentials, region, "s3"))
         result <- http.run.expectSuccess.resource.use: resp =>
-          Async[F].delay:
-            Response:
-              resp.headers.get[ETag].getOrElse:
-                throw IllegalStateException(s"ETag is missing in the response")
+          val label = "PutObject: response"
+          inline def getSingleTextRequired(key: CIString) =
+              resp.headers.getSingleTextRequired(key, label)
+          for
+            ETag               <- resp.headers.get[ETag] match // TODO hard to generalize
+              case Some(value) => value.pure
+              case None        => log.warn(s"$label: ETag is missing; treating it as the empty").as(ETag(""))
+            `x-amz‑request‑id` <- getSingleTextRequired(ci"x-amz-request-id")
+            `x-amz‑id‑2`       <- getSingleTextRequired(ci"x-amz-id-2")
+          yield Response(
+            ETag,
+            `x-amz‑request‑id`,
+            `x-amz‑id‑2`,
+          )
 
       yield
         result
@@ -439,7 +453,9 @@ package object s3:
       //...
       //x-amz-checksum-sha256
       //...
-    )
+      `x-amz‑request‑id`     : String,
+      `x-amz‑id‑2`           : String,
+    ) extends S3Response
 
   /*
    * 1. Unversioned bucket: permanently deletes the object
@@ -457,24 +473,25 @@ package object s3:
           .withHeaderOpt(req.`If-Match`           .map(_.toRaw1))
           .evalMapRequest(AwsSigV4.`UNSIGNED-PAYLOAD`(_, credentials, region, "s3"))
         result <- http.run.expectSuccess.resource.use: resp =>
-          inline def getSingleTextValueRequired(key: CIString) =
-              resp.headers.getSingleTextValueRequired(key, "DeleteObject: response")
-          inline def getSingleTextValue(key: CIString) =
-              resp.headers.getSingleTextValue(key, "DeleteObject: response")
-          inline def getSingleBooleanValue(key: CIString) =
-              resp.headers.getSingleBooleanValue(key, "DeleteObject: response")
+          val label = "DeleteObject: response"
+          inline def getSingleTextRequired(key: CIString) =
+              resp.headers.getSingleTextRequired(key, label)
+          inline def getSingleText(key: CIString) =
+              resp.headers.getSingleText(key, label)
+          inline def getSingleBoolean(key: CIString) =
+              resp.headers.getSingleBoolean(key, label)
           for
-            `x-amz‑request‑id`      <- getSingleTextValueRequired(ci"x-amz-request-id")
-            `x-amz‑id‑2`            <- getSingleTextValueRequired(ci"x-amz-id-2")
-            `x-amz-delete-marker`   <- getSingleBooleanValue     (ci"x-amz-delete-marker")
-            `x-amz-version-id`      <- getSingleTextValue        (ci"x-amz-version-id")
-            `x-amz-request-charged` <- getSingleTextValue        (ci"x-amz-request-charged")
+            `x-amz-delete-marker`   <- getSingleBoolean     (ci"x-amz-delete-marker")
+            `x-amz-version-id`      <- getSingleText        (ci"x-amz-version-id")
+            `x-amz-request-charged` <- getSingleText        (ci"x-amz-request-charged")
+            `x-amz‑request‑id`      <- getSingleTextRequired(ci"x-amz-request-id")
+            `x-amz‑id‑2`            <- getSingleTextRequired(ci"x-amz-id-2")
           yield Response(
-            `x-amz‑request‑id`,
-            `x-amz‑id‑2`,
             `x-amz-delete-marker`,
             `x-amz-version-id`,
             `x-amz-request-charged`,
+            `x-amz‑request‑id`,
+            `x-amz‑id‑2`,
           )
 
       yield
@@ -488,12 +505,12 @@ package object s3:
     )
 
     case class Response(
-      `x-amz‑request‑id`     : String,
-      `x-amz‑id‑2`           : String,
       `x-amz-delete-marker`  : Option[Boolean],
       `x-amz-version-id`     : Option[String],
       `x-amz-request-charged`: Option[String],
-    )
+      `x-amz‑request‑id`     : String,
+      `x-amz‑id‑2`           : String,
+    ) extends S3Response
 
   object DeleteObjects: // TODO XML rendering
     type Request = Delete
