@@ -14,8 +14,7 @@ class ListBucketsTests extends AwsSuite:
     test("none"):
       for
         http = KoHttpClient(client).withUri(endpointOf(profile.region))
-        req <- ListBuckets.Request().pure[F]
-        resp <- ListBuckets(profile)(http)(req)
+        resp <- ListBuckets(profile)(http)(ListBuckets.Request())
       yield
         println(s"resp = $resp")
         //println(s"  buckets = ${resp.Buckets.toList.mkString("\n            ")}")
@@ -23,8 +22,7 @@ class ListBucketsTests extends AwsSuite:
     test("bucket-region"):
       for
         http = KoHttpClient(client).withUri(endpointOf(profile.region))
-        req <- ListBuckets.Request(`bucket-region` = Some(AwsRegion.Tokyo)).pure[F]
-        resp <- ListBuckets(profile)(http)(req)
+        resp <- ListBuckets(profile)(http)(ListBuckets.Request(`bucket-region` = Some(AwsRegion.Tokyo)))
       yield
         println(s"resp = $resp")
         //println(s"  buckets = ${resp.Buckets.toList.mkString("\n            ")}")
@@ -32,8 +30,7 @@ class ListBucketsTests extends AwsSuite:
     test("max-buckets"):
       for
         http = KoHttpClient(client).withUri(endpointOf(profile.region))
-        req <- ListBuckets.Request(`max-buckets` = Some(1)).pure[F]
-        resp <- ListBuckets(profile)(http)(req)
+        resp <- ListBuckets(profile)(http)(ListBuckets.Request(`max-buckets` = Some(1)))
       yield
         println(s"resp = $resp")
         //println(s"  buckets = ${resp.Buckets.toList.mkString("\n            ")}")

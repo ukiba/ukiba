@@ -4,7 +4,7 @@ package ko_aws
 import jp.ukiba.koneko.ko_http4s.client.KoHttpClient
 import jp.ukiba.koneko.ko_fs2.xml.{XmlParser, XmlTextTrimmer, XmlEventLog}
 
-import org.http4s.{Uri, QueryParamEncoder, Header}
+import org.http4s.{Uri, QueryParamEncoder, Header, Headers}
 import org.http4s.headers.{ETag, `Cache-Control`, `Content-Disposition`, `Content-Encoding`,
                           `Content-Language`, `Content-Length`, `Content-Type`, `Expires`,
                           `If-Match`, `If-None-Match`}
@@ -15,6 +15,7 @@ import org.typelevel.log4cats.Logger
 import cats.effect.{Sync, Async}
 import cats.syntax.all.*
 import cats.data.Chain
+import org.typelevel.ci.{CIStringSyntax, CIString}
 
 import java.time.Instant
 
@@ -72,6 +73,42 @@ package object s3:
   import org.http4s.Header
   given optionConv[A, B](using conv: Conversion[A, B]): Conversion[Option[A], Option[B]] with
     def apply(o: Option[A]): Option[B] = o.map(conv)
+
+  extension [F[_]: Sync] (headers: Headers)
+    def getSingleTextValue(key: CIString, label: String)(using Logger[F]): F[Option[String]] =
+      headers.get(key) match
+        case Some(nel) =>
+          for
+            _ <- if nel.tail.nonEmpty then
+              Logger[F].warn(s"$label: $key has more than one value: ${
+                  nel.iterator.map(_.value).mkString(", ")}")
+            else
+              Sync[F].unit
+          yield nel.head.value.pure
+
+        case None =>
+          None.pure
+
+    /** Does not fail even if AWS stops sending the header */
+    def getSingleTextValueRequired(key: CIString, label: String)(using Logger[F]): F[String] =
+      for
+        opt <- getSingleTextValue(key, label)
+        value <- opt match
+          case Some(value) => value.pure
+          case None        => Logger[F].warn(s"$label: $key is missing; treating it as the empty").as("")
+      yield value
+
+    /** Does not fail even if AWS sends an unexpected value */
+    def getSingleBooleanValue(key: CIString, label: String)(using Logger[F]): F[Option[Boolean]] =
+      for
+        opt <- getSingleTextValue(key, label)
+        value <- opt match
+          case Some("true" ) => Some(true ).pure
+          case Some("false") => Some(false).pure
+          case Some(other)   => Logger[F].warn(s"$label: $key: Unexpected value: $other; treating it as missing")
+                                    .as(None)
+          case None          => None.pure
+      yield value
 
   /*
     The models could be generated with https://github.com/smithy-lang/smithy-java
@@ -329,7 +366,7 @@ package object s3:
       bucket              : String,
       `bucket-region`     : Option[String]  = None,
       `continuation-token`: Option[String]  = None,
-      `delimiter`         : Option[Char]    = Some('/'),
+      `delimiter`         : Option[Char]    = None,
       `encoding-type`     : Option[String]  = None,
       `fetch-owner`       : Option[Boolean] = None,
       `max-keys`          : Option[Int]     = None,
@@ -376,9 +413,9 @@ package object s3:
         result
 
     case class Request[F[_]](
-      content              : Stream[F, Byte],
-      key                  : String,
       bucket               : String,
+      key                  : String,
+      content              : Stream[F, Byte],
       `Cache-Control`      : Option[`Cache-Control`      ] = None, // propagates to GET, HEAD, CloudFront, ...
       `Content-Disposition`: Option[`Content-Disposition`] = None, // propagates to GET, HEAD, CloudFront, ...
       `Content-Encoding`   : Option[`Content-Encoding`   ] = None, // propagates to GET, HEAD, CloudFront, ...
@@ -403,3 +440,74 @@ package object s3:
       //x-amz-checksum-sha256
       //...
     )
+
+  /*
+   * 1. Unversioned bucket: permanently deletes the object
+   * 2. Versioned bucket
+   *     1. Without versionId: adds a delete marker (soft delete)
+   *     2. with versionId: permanently deletes that version 
+   */
+  object DeleteObject:
+    def apply[F[_]: Async](profile: Aws.Profile)(http: KoHttpClient[F, ?])(req: Request)
+        (using Logger[F]): F[Response] =
+      import profile.{credentials, region}
+      for
+        http <- http.prependHostName(s"${req.bucket}.").DELETE(req.key)
+          .withParamOpt("versionId", req.versionId)
+          .withHeaderOpt(req.`If-Match`           .map(_.toRaw1))
+          .evalMapRequest(AwsSigV4.`UNSIGNED-PAYLOAD`(_, credentials, region, "s3"))
+        result <- http.run.expectSuccess.resource.use: resp =>
+          inline def getSingleTextValueRequired(key: CIString) =
+              resp.headers.getSingleTextValueRequired(key, "DeleteObject: response")
+          inline def getSingleTextValue(key: CIString) =
+              resp.headers.getSingleTextValue(key, "DeleteObject: response")
+          inline def getSingleBooleanValue(key: CIString) =
+              resp.headers.getSingleBooleanValue(key, "DeleteObject: response")
+          for
+            `x-amz‑request‑id`      <- getSingleTextValueRequired(ci"x-amz-request-id")
+            `x-amz‑id‑2`            <- getSingleTextValueRequired(ci"x-amz-id-2")
+            `x-amz-delete-marker`   <- getSingleBooleanValue     (ci"x-amz-delete-marker")
+            `x-amz-version-id`      <- getSingleTextValue        (ci"x-amz-version-id")
+            `x-amz-request-charged` <- getSingleTextValue        (ci"x-amz-request-charged")
+          yield Response(
+            `x-amz‑request‑id`,
+            `x-amz‑id‑2`,
+            `x-amz-delete-marker`,
+            `x-amz-version-id`,
+            `x-amz-request-charged`,
+          )
+
+      yield
+        result
+
+    case class Request(
+      bucket    : String,
+      key       : String,
+      versionId : Option[String    ] = None,
+      `If-Match`: Option[`If-Match`] = None,
+    )
+
+    case class Response(
+      `x-amz‑request‑id`     : String,
+      `x-amz‑id‑2`           : String,
+      `x-amz-delete-marker`  : Option[Boolean],
+      `x-amz-version-id`     : Option[String],
+      `x-amz-request-charged`: Option[String],
+    )
+
+  object DeleteObjects: // TODO XML rendering
+    type Request = Delete
+
+    case class Delete(
+      Object: Chain[Delete.Object],
+      Quite: Option[Boolean] = None,
+    ):
+      require(Quite.forall(_ == true)) // the value must be ture if added
+    object Delete:
+      case class Object(
+        Key: String,
+        ETag: Option[String],
+        LastModifiedTime: Option[Timestamp],
+        Size: Option[Long],
+        VersionId: Option[String],
+      )
