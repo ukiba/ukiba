@@ -293,6 +293,8 @@ object KoHttpRequest:
 
     /** Existing value is replaced if the same name already exists */
     def withHeader(headers: Header.ToRaw*): Self = mapHeaders(_ ++ Headers(headers))
+    def withHeaderOpt(head: Option[Header.ToRaw], tail: Option[Header.ToRaw]*): Self =
+      mapHeaders(_ ++ Headers((head +: tail).flatten))
 
     //def withHeader[H](header: H)(using Header[H, Header.Recurring]): Self =
     //  mapHeaders(_.add(header))

@@ -4,7 +4,11 @@ package ko_aws
 import jp.ukiba.koneko.ko_http4s.client.KoHttpClient
 import jp.ukiba.koneko.ko_fs2.xml.{XmlParser, XmlTextTrimmer, XmlEventLog}
 
-import org.http4s.{Uri, QueryParamEncoder}
+import org.http4s.{Uri, QueryParamEncoder, Header}
+import org.http4s.headers.{ETag, `Cache-Control`, `Content-Disposition`, `Content-Encoding`,
+                          `Content-Language`, `Content-Length`, `Content-Type`, `Expires`,
+                          `If-Match`, `If-None-Match`}
+import org.http4s.syntax.all.*
 import fs2.data.xml, xml.{XmlEvent, QName}, XmlEvent.{StartTag, EndTag}
 import fs2.{Stream, Pipe, Pull, text}
 import org.typelevel.log4cats.Logger
@@ -63,6 +67,11 @@ package object s3:
   type Timestamp = String // TODO
 
   given QueryParamEncoder[Char] = QueryParamEncoder[String].contramap(_.toString) // TODO relocate
+
+  import scala.language.implicitConversions
+  import org.http4s.Header
+  given optionConv[A, B](using conv: Conversion[A, B]): Conversion[Option[A], Option[B]] with
+    def apply(o: Option[A]): Option[B] = o.map(conv)
 
   /*
     The models could be generated with https://github.com/smithy-lang/smithy-java
@@ -178,7 +187,7 @@ package object s3:
           .withParamOpt("continuation-token", req.`continuation-token`)
           .withParamOpt("max-buckets"       , req.`max-buckets`)
           .withParamOpt("prefix"            , req.`prefix`)
-          .evalMapRequest(AwsSigV4.unsignedPayload(_, credentials, region, "s3"))
+          .evalMapRequest(AwsSigV4.`UNSIGNED-PAYLOAD`(_, credentials, region, "s3"))
         result <- http.acceptString.run.expectSuccess.resource.use: resp =>
           resp.body
             .through(text.utf8.decode)
@@ -251,32 +260,32 @@ package object s3:
           Delimiter, EncodingType, IsTruncated, Contents, CommonPrefixes)
 
     case class Contents(
+      Key: String,
+      LastModified: Timestamp,
+      ETag: String,
       ChecksumAlgorithm: Option[String], // TODO maybe enum: CRC32 | CRC32C | SHA1 | SHA256 | CRC64NVME
       ChecksumType: Option[String], // TODO maybe enum: COMPOSITE | FULL_OBJECT
-      ETag: Option[String],
-      Key: Option[String],
-      LastModified: Option[Timestamp],
       Owner: Option[CanonicalUser],
       RestoreStatus: Option[RestoreStatus],
-      Size: Option[Long],
-      StorageClass: Option[String], // TODO maybe enum: STANDARD | REDUCED_REDUNDANCY | GLACIER | STANDARD_IA | ONEZONE_IA | INTELLIGENT_TIERING | DEEP_ARCHIVE | OUTPOSTS | GLACIER_IR | SNOW | EXPRESS_ONEZONE | FSX_OPENZFS 
+      Size: Long,
+      StorageClass: String, // TODO maybe enum: STANDARD | REDUCED_REDUNDANCY | GLACIER | STANDARD_IA | ONEZONE_IA | INTELLIGENT_TIERING | DEEP_ARCHIVE | OUTPOSTS | GLACIER_IR | SNOW | EXPRESS_ONEZONE | FSX_OPENZFS 
     )
     object Contents:
       def parser[F[_]: Sync](head: StartTag): Parser[F, Contents] =
         for
+          Key               <- textNonEmptyOnlyTag[F]("Key")
+          LastModified      <- textNonEmptyOnlyTag[F]("LastModified")
+          ETag              <- textNonEmptyOnlyTag[F]("ETag")
           ChecksumAlgorithm <- textOnlyTagOpt[F]("ChecksumAlgorithm")
           ChecksumType      <- textOnlyTagOpt[F]("ChecksumType")
-          ETag              <- textOnlyTagOpt[F]("ETag")
-          Key               <- textOnlyTagOpt[F]("Key")
-          LastModified      <- textOnlyTagOpt[F]("LastModified")
           Owner             <- optPat:
             case head @ StartTag(QName(_, "Owner"), _, _) => CanonicalUser.parser("Owner")
           RestoreStatus     <- optPat:
             case head @ StartTag(QName(_, "RestoreStatus"), _, _) => RestoreStatus.parser(head)
-          Size              <- textOnlyTagOpt[F]("Size").map(_.map(_.toLong))
-          StorageClass      <- textOnlyTagOpt[F]("StorageClass")
+          Size              <- textNonEmptyOnlyTag[F]("Size").map(_.toLong)
+          StorageClass      <- textNonEmptyOnlyTag[F]("StorageClass")
           _                 <- expect[F](EndTag(head.name))
-        yield Contents(ChecksumAlgorithm, ChecksumType, ETag, Key, LastModified, Owner,
+        yield Contents(Key, LastModified, ETag, ChecksumAlgorithm, ChecksumType, Owner,
             RestoreStatus, Size, StorageClass)
 
   object ListObjectsV2:
@@ -293,7 +302,7 @@ package object s3:
           .withParamOpt("max-keys"          , req.`max-keys`)
           .withParamOpt("prefix"            , req.`prefix`)
           .withParamOpt("start-after"       , req.`start-after`)
-          .evalMapRequest(AwsSigV4.unsignedPayload(_, credentials, region, "s3"))
+          .evalMapRequest(AwsSigV4.`UNSIGNED-PAYLOAD`(_, credentials, region, "s3"))
         result <- http.acceptString.run.expectSuccess.resource.use: resp =>
           resp.body
             .through(text.utf8.decode)
@@ -323,7 +332,7 @@ package object s3:
       `delimiter`         : Option[Char]    = Some('/'),
       `encoding-type`     : Option[String]  = None,
       `fetch-owner`       : Option[Boolean] = None,
-      `max-keys`          : Option[Int]    = None,
+      `max-keys`          : Option[Int]     = None,
       `prefix`            : Option[String]  = None,
       `start-after`       : Option[String]  = None,
       //x-amz-expected-bucket-owner
@@ -336,3 +345,61 @@ package object s3:
           s"max-keys = ${`max-keys`}")
 
     type Response = ListBucketResult
+
+  object PutObject:
+    def apply[F[_]: Async](profile: Aws.Profile)(http: KoHttpClient[F, ?])(req: Request[F],
+        dontRepeatWithContinuationToken: Boolean = false)
+        (using Logger[F]): F[Response] =
+      import profile.{credentials, region}
+      require(req.`Content-Length`.nonEmpty, "the payload length must be known") // even when streaming chunks
+      for
+        http <- http.prependHostName(s"${req.bucket}.").PUT(req.key)
+          .withBody(req.content)
+          .withHeaderOpt(req.`Cache-Control`      .map(_.toRaw1))
+          .withHeaderOpt(req.`Content-Disposition`.map(_.toRaw1))
+          .withHeaderOpt(req.`Content-Encoding`   .map(_.toRaw1))
+          .withHeaderOpt(req.`Content-Language`   .map(_.toRaw1))
+          .withHeaderOpt(req.`Content-Length`     .map(_.toRaw1))
+          .withHeaderOpt(req.`Content-MD5`.map(value => "Content-MD5" -> value))
+          .withHeaderOpt(req.`Content-Type`       .map(_.toRaw1))
+          .withHeaderOpt(req.`Expires`            .map(_.toRaw1))
+          .withHeaderOpt(req.`If-Match`           .map(_.toRaw1))
+          .withHeaderOpt(req.`If-None-Match`      .map(_.toRaw1))
+          .evalMapRequest(AwsSigV4.`UNSIGNED-PAYLOAD`(_, credentials, region, "s3"))
+        result <- http.run.expectSuccess.resource.use: resp =>
+          Async[F].delay:
+            Response:
+              resp.headers.get[ETag].getOrElse:
+                throw IllegalStateException(s"ETag is missing in the response")
+
+      yield
+        result
+
+    case class Request[F[_]](
+      content              : Stream[F, Byte],
+      key                  : String,
+      bucket               : String,
+      `Cache-Control`      : Option[`Cache-Control`      ] = None, // propagates to GET, HEAD, CloudFront, ...
+      `Content-Disposition`: Option[`Content-Disposition`] = None, // propagates to GET, HEAD, CloudFront, ...
+      `Content-Encoding`   : Option[`Content-Encoding`   ] = None, // propagates to GET, HEAD, CloudFront, ...
+      `Content-Language`   : Option[`Content-Language`   ] = None, // propagates to GET, HEAD, CloudFront, ...
+      `Content-Length`     : Option[`Content-Length`     ] = None,
+      `Content-MD5`        : Option[String               ] = None,
+      `Content-Type`       : Option[`Content-Type`       ] = None, // propagates to GET, HEAD, CloudFront, ...
+      `Expires`            : Option[`Expires`            ] = None, // propagates to GET, HEAD, CloudFront, ...
+      `If-Match`           : Option[`If-Match`           ] = None,
+      `If-None-Match`      : Option[`If-None-Match`      ] = None,
+      //x-amz-acl
+      //...
+      //x-amz-checksum-sha256
+      //...
+    ):
+      require(key.length >= 1)
+
+    case class Response(
+      ETag: ETag, // cannot be SHA-256
+      //x-amz-expiration
+      //...
+      //x-amz-checksum-sha256
+      //...
+    )

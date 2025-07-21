@@ -13,12 +13,12 @@ import java.time.{Instant, ZoneOffset, ZonedDateTime}
 import java.time.format.DateTimeFormatter
 
 /**
- * Implements AWS Signature Version 4
+ * AWS Signature Version 4
  * https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-authenticating-requests.html
  */
 object AwsSigV4:
-  val amzDateFmt   = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'") // ISO 8601
-  val scopeDateFmt = DateTimeFormatter.ofPattern("yyyyMMdd")
+  val amzDateFmt = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'") // ISO 8601
+  val yyyyMMdd   = DateTimeFormatter.ofPattern("yyyyMMdd")
 
   // https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_sigv-create-signed-request.html
   val defaultCanonicalHeaderNames: Seq[String] = Seq(
@@ -27,35 +27,35 @@ object AwsSigV4:
     "x-amz-*", // x-amz-* headers that you plan to include in your request must also be added
   )
 
-  /*
-    TODO could switch to AWS Signature Version 4A when region is not specified
-  */
-  def unsignedPayload[F[_]: Sync](
+  // TODO could switch to AWS Signature Version 4A when region is not specified
+
+  def `UNSIGNED-PAYLOAD`[F[_]: Sync](
     req: Request[F],
     creds: Aws.Credentials,
     region: String,
     service: String,
     canonicalHeaderNames: Seq[String] = defaultCanonicalHeaderNames, // supports glob at either end
-    exeTime: Instant = Instant.now,
-  ): F[Request[F]] = Sync[F].delay:
+  ): F[Request[F]] = for
+    exeTime <- Sync[F].realTimeInstant
+
+    `x-amz-content-sha256` <- "UNSIGNED-PAYLOAD".pure
+
     // timestamps
-    val amzDate   = exeTime.atUtcZone.format(amzDateFmt)
-    val scopeDate = exeTime.atUtcZone.format(scopeDateFmt)
+    amzDate = exeTime.atUtcZone.format(amzDateFmt)
 
     // required headers
-    val host = req.headers.get[Host].map(_.host)
+    host = req.headers.get[Host].map(_.host)
         .orElse(req.uri.authority.map(_.host.renderString))
         .getOrElse("")
-    val payload = "UNSIGNED-PAYLOAD"
-    val requiredHeaders = Seq(
+    requiredHeaders = Seq(
       "host"                 -> host, // host header (HTTP/1.1) or the :authority header (HTTP/2)
-      "x-amz-content-sha256" -> payload,
+      "x-amz-content-sha256" -> `x-amz-content-sha256`,
       "x-amz-date"           -> amzDate,
     ) ++ creds.sessionToken.toSeq.map: sessionToken =>
       "x-amz-security-token" -> sessionToken
 
     // canonical header
-    val canonicalHeaders = (req.headers ++ Headers(requiredHeaders)).headers.flatMap: headerRaw =>
+    canonicalHeaders = (req.headers ++ Headers(requiredHeaders)).headers.flatMap: headerRaw =>
         val name = headerRaw.name.toString.toLowerCase // SignedHeaders must be in lowercase
         val matched = canonicalHeaderNames.exists: pattern =>
           if pattern.startsWith("*") then
@@ -67,35 +67,46 @@ object AwsSigV4:
         Option.when(matched):
           name -> headerRaw.sanitizedValue.trim // sanitize: new line chars to a space
       .sortBy(_._1)
-    val signedHeadersNames = canonicalHeaders.map(_._1).mkString(";")
+    signedHeadersNames = canonicalHeaders.map(_._1).mkString(";")
 
     // canonical request
-    val canonicalUriPath = Uri.removeDotSegments(req.uri.path).segments.map(_.decoded())
-    val canonicalQuery = req.uri.query.params.toSeq.sortBy(_._1)
-    val canonicalReqHash = Seq(
+    canonicalUriPath = Uri.removeDotSegments(req.uri.path).segments.map(_.decoded())
+    canonicalQuery = req.uri.query.params.toSeq.sortBy(_._1)
+    canonicalReqHash = Seq(
       req.method.name,
       canonicalUriPath.map(Aws.uriEncode).mkString("/", "/", ""), // re-encode according to the AWS rule
       canonicalQuery.map { (key, value) => s"${Aws.uriEncode(key)}=${Aws.uriEncode(value)}" }.mkString("&"),
       canonicalHeaders.map { (key, value) => s"$key:$value\n" }.mkString, // newline at the end
       signedHeadersNames,
-      payload
+      `x-amz-content-sha256`, // hashedPayload
     ).mkString("\n").utf8.sha256.toHexString
 
     // sign
     // https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-header-based-auth.html
-    val algo       = "AWS4-HMAC-SHA256" // AWS Signature Version 4
-    val scopeComps = Seq(scopeDate, region, service, "aws4_request")
-    val scope      = scopeComps.mkString("/")
-    val toSign     = Seq(algo, amzDate, scope, canonicalReqHash).mkString("\n")
+    algo       = "AWS4-HMAC-SHA256" // AWS Signature Version 4
+    scopeComps = Seq(exeTime.atUtcZone.format(yyyyMMdd), region, service, "aws4_request")
+    scope      = scopeComps.mkString("/")
+    toBeSigned = Seq(algo, amzDate, scope, canonicalReqHash).mkString("\n")
 
-    inline def hmac(data: String, key: Array[Byte]): Array[Byte] = data.utf8.hmac.sha256(key)
-    val sigKey = scopeComps.foldLeft(s"AWS4${creds.secretAccessKey}".utf8) { (key, comp) => hmac(comp, key) }
-    val sig = hmac(toSign, sigKey).toHexString
+    signingKey = signingKeyOf(creds.secretAccessKey, scopeComps)
+    signature = `HMAC-SHA256`(toBeSigned, signingKey).toHexString
 
     // Authorization header
     // https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-auth-using-authorization-header.html
-    val credential = s"${creds.accessKeyId}/$scope"
-    val authHeaderValue = s"$algo Credential=$credential, SignedHeaders=$signedHeadersNames, Signature=$sig"
+    credential = s"${creds.accessKeyId}/$scope"
+    authHeaderValue = s"$algo Credential=$credential, SignedHeaders=$signedHeadersNames, Signature=$signature"
 
+  yield
     // override headers
     req.withHeaders(req.headers ++ Headers(canonicalHeaders) ++ Headers("Authorization" -> authHeaderValue))
+
+  // For streaming,
+  // x-amz-decoded-content-length must be given before streaming the chunks
+  // https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-streaming.html
+
+  def signingKeyOf(secretAccessKey: String, tail: Seq[String]): Array[Byte] =
+    val head = s"AWS4$secretAccessKey".utf8
+    tail.foldLeft(head): (intermediate, comp) =>
+      `HMAC-SHA256`(comp, intermediate)
+
+  inline def `HMAC-SHA256`(data: String, key: Array[Byte]): Array[Byte] = data.utf8.hmac.sha256(key)
