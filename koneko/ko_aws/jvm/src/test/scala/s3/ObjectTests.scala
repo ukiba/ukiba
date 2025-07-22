@@ -11,19 +11,10 @@ import cats.effect.syntax.all.*
 import cats.syntax.all.*
 import cats.data.Chain
 
-import scala.util.Random
-import scala.math.min
-
 class ObjectTests extends AwsSuite:
   given log: Logger[F] = LoggerFactory[F].getLogger
 
   val bucket = "ko-aws-test-2025-07" // has to exist
-
-  def contentStream(len: Long, seed: Long): Stream[F, Byte] =
-    val rand = Random(seed)
-    val chunkSize = 1024
-    Stream.iterable(Iterable.range(0L, len, chunkSize.toLong)).flatMap: i =>
-      Stream.emits(rand.nextBytes(min((len - i).toInt, chunkSize)))
 
   test("scenario"):
     val http = KoHttpClient(client).withUri(endpointOf(profile.region))
@@ -47,6 +38,12 @@ class ObjectTests extends AwsSuite:
       list2 <- ListObjectsV2(profile)(http)(ListObjectsV2.Request(bucket))
       _ = assertMatch(list2.Contents):
         case Chain(ListBucketResult.Contents("random-256k", _, _, _, _, _, _, size, _)) if size == 256 * 1024 =>
+
+      get2 <- GetObject(profile)(http)(HeadObject.Request(bucket, "random-256k")).use: (respBody, resp) =>
+        for
+          _ = assertEquals(resp.ETag, head2.ETag)
+          _ <- assertStreamsEquals(respBody, contentStream(256 * 1024, 1))
+        yield ()
 
       logs <- showLogged(_ => true)
       _ = println(logs.mkString("\n"))

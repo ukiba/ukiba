@@ -5,14 +5,15 @@ import jp.ukiba.koneko.ko_http4s.client.KoHttpClient
 import jp.ukiba.koneko.ko_fs2.xml.{XmlParser, XmlTextTrimmer, XmlEventLog}
 
 import org.http4s.{Uri, QueryParamEncoder, Header, Headers, Status, MediaType}
-import org.http4s.headers.{ETag, `Cache-Control`, `Content-Disposition`, `Content-Encoding`,
-                          `Content-Language`, `Content-Length`, `Content-Type`, `Expires`,
+import org.http4s.headers.{ETag, `Accept-Ranges`, `Content-Range`, `Range`, `Content-Type`,
+                          `Content-Disposition`, `Content-Encoding`, `Content-Language`, `Content-Length`,
+                          `Last-Modified`, `Cache-Control`, `Expires`,
                           `If-Match`, `If-None-Match`, `If-Modified-Since`, `If-Unmodified-Since`}
 import org.http4s.syntax.all.*
 import fs2.data.xml, xml.{XmlEvent, QName}, XmlEvent.{StartTag, EndTag}
 import fs2.{Stream, Pipe, Pull, text}
 import org.typelevel.log4cats.Logger
-import cats.effect.{Sync, Async}
+import cats.effect.{Sync, Async, Resource}
 import cats.syntax.all.*
 import cats.data.Chain
 import org.typelevel.ci.{CIStringSyntax, CIString}
@@ -111,6 +112,8 @@ package object s3:
   // MinIO (Vultr) and Wasabi seem to send both, but
   // Cloudflare R2, Ceph Rados Gateway (RGW), and DigitalOcean Spaces seem to send only `x-amz-request-id`
   trait S3Response:
+    //Date
+    //Server
     def `x-amz-request-id`: String
     def `x-amz-id-2`      : String
 
@@ -401,12 +404,13 @@ package object s3:
           .withHeaderOpt(req.`Content-Encoding`   .map(_.toRaw1))
           .withHeaderOpt(req.`Content-Language`   .map(_.toRaw1))
           .withHeaderOpt(req.`Content-Length`     .map(_.toRaw1))
-          .withHeaderOpt(req.`Content-MD5`.map(value => "Content-MD5" -> value))
+          .withHeaderOpt(req.`Content-MD5`.map("Content-MD5" -> _))
           .withHeaderOpt(req.`Content-Type`       .map(_.toRaw1))
           .withHeaderOpt(req.`Expires`            .map(_.toRaw1))
           .withHeaderOpt(req.`If-Match`           .map(_.toRaw1))
           .withHeaderOpt(req.`If-None-Match`      .map(_.toRaw1))
           .evalMapRequest(AwsSigV4.`UNSIGNED-PAYLOAD`(_, credentials, region, "s3"))
+
         result <- http.run.expectSuccess.resource.use: resp =>
           val label = "PutObject: response"
           inline def getSingleTextRequired(key: CIString) =
@@ -465,14 +469,31 @@ package object s3:
         http <- http.prependHostName(s"${req.bucket}.").HEAD(req.key)
           .withParamOpt("partNumber", req.partNumber)
           .withParamOpt("versionId" , req.versionId)
+          .withParamOpt("response-cache-control"      , req.`response-cache-control`      .map(_.value))
+          .withParamOpt("response-content-type"       , req.`response-content-type`       .map(_.value))
+          .withParamOpt("response-content-disposition", req.`response-content-disposition`.map(_.value))
+          .withParamOpt("response-content-encoding"   , req.`response-content-encoding`   .map(_.value))
+          .withParamOpt("response-content-language"   , req.`response-content-language`   .map(_.value))
+          .withParamOpt("response-expires"            , req.`response-expires`            .map(_.value))
+          .withHeaderOpt(req.`Range`              .map(_.toRaw1))
           .withHeaderOpt(req.`If-Match`           .map(_.toRaw1))
           .withHeaderOpt(req.`If-None-Match`      .map(_.toRaw1))
           .withHeaderOpt(req.`If-Modified-Since`  .map(_.toRaw1))
           .withHeaderOpt(req.`If-Unmodified-Since`.map(_.toRaw1))
+          .withHeaderOpt(req.`x-amz-server-side-encryption-customer-algorithm`
+              .map("x-amz-server-side-encryption-customer-algorithm" -> _))
+          .withHeaderOpt(req.`x-amz-server-side-encryption-customer-key`
+              .map("x-amz-server-side-encryption-customer-key" -> _))
+          .withHeaderOpt(req.`x-amz-server-side-encryption-customer-key-MD5`
+              .map("x-amz-server-side-encryption-customer-key-MD5" -> _))
+          .withHeaderOpt(req.`x-amz-request-payer`        .map("x-amz-request-payer"         -> _))
+          .withHeaderOpt(req.`x-amz-expected-bucket-owner`.map("x-amz-expected-bucket-owner" -> _))
+          .withHeaderOpt(req.`x-amz-checksum-mode`        .map("x-amz-checksum-mode"         -> _))
           .evalMapRequest(AwsSigV4.`UNSIGNED-PAYLOAD`(_, credentials, region, "s3"))
+
         result <- http.run.expectStatus(status => status.responseClass == Status.Successful ||
             status == Status.NotFound).resource.use: resp =>
-          val label = "HeadObject: response"
+          val label = "GetObject: response"
           inline def getSingleTextRequired(key: CIString) =
               resp.headers.getSingleTextRequired(key, label)
           inline def getSingleText(key: CIString) =
@@ -482,23 +503,36 @@ package object s3:
           for
             ETag                    <- resp.headers.get[ETag].pure
             `Content-Length`        <- resp.headers.get[`Content-Length`].pure
+            `Content-Range`         <- resp.headers.get[`Content-Range`].pure
             `Content-Type`          <- resp.headers.get[`Content-Type`] match // TODO hard to generalize
               case Some(value) => value.pure
               case None        => log.warn(s"$label: Content-Type is missing; treating it as the empty")
                                       .as(`Content-Type`(MediaType.application.`octet-stream`))
+            `Content-Disposition`   <- resp.headers.get[`Content-Disposition`].pure
+            `Content-Encoding`      <- resp.headers.get[`Content-Encoding`].pure
+            `Content-Language`      <- resp.headers.get[`Content-Language`].pure
+            `Accept-Ranges`         <- resp.headers.get[`Accept-Ranges`].pure
+            `Last-Modified`         <- resp.headers.get[`Last-Modified`].pure
+            `Cache-Control`         <- resp.headers.get[`Cache-Control`].pure
+            `Expires`               <- resp.headers.get[`Expires`].pure
             `x-amz-delete-marker`   <- getSingleBoolean     (ci"x-amz-delete-marker")
             `x-amz-version-id`      <- getSingleText        (ci"x-amz-version-id")
             `x-amz-request-charged` <- getSingleText        (ci"x-amz-request-charged")
             `x-amz-request-id`      <- getSingleTextRequired(ci"x-amz-request-id")
             `x-amz-id-2`            <- getSingleTextRequired(ci"x-amz-id-2")
           yield
-            resp.status match
-              case Status.NotFound => require(ETag.isEmpty)
-              case _               => require(ETag.nonEmpty)
             Response(
               ETag,
               `Content-Length`,
+              `Content-Range`,
               `Content-Type`,
+              `Content-Disposition`,
+              `Content-Encoding`,
+              `Content-Language`,
+              `Accept-Ranges`,
+              `Last-Modified`,
+              `Cache-Control`,
+              `Expires`,
               `x-amz-delete-marker`,
               `x-amz-version-id`,
               `x-amz-request-charged`,
@@ -509,37 +543,155 @@ package object s3:
       yield
         result
 
-    case class Request(
-      bucket               : String,
-      key                  : String,
-      partNumber           : Option[String               ] = None,
-      versionId            : Option[String               ] = None,
-      `If-Match`           : Option[`If-Match`           ] = None,
-      `If-None-Match`      : Option[`If-None-Match`      ] = None,
-      `If-Modified-Since`  : Option[`If-Modified-Since`  ] = None,
-      `If-Unmodified-Since`: Option[`If-Unmodified-Since`] = None,
-      // response-cache-control
-      // response-content-disposition
-      // response-content-encoding
-      // response-content-language
-      // response-content-type
-      // response-expires
-      // x-amz-checksum-mode
-      // ...
-    )
+    type Request = GetObject.Request
+    val  Request = GetObject.Request
 
-    case class Response(
-      ETag                   : Option[ETag],
-      `Content-Length`       : Option[`Content-Length`],
+    case class Response( // has `x-amz-archive-status` in addition to GetObject.Response
+      ETag                   : Option[ETag                 ],
+      `Content-Length`       : Option[`Content-Length`     ],
+      `Content-Range`        : Option[`Content-Range`      ],
       `Content-Type`         : `Content-Type`, // application/xml on error responses
-      //...
+      `Content-Disposition`  : Option[`Content-Disposition`],
+      `Content-Encoding`     : Option[`Content-Encoding`   ],
+      `Content-Language`     : Option[`Content-Language`   ],
+      `Accept-Ranges`        : Option[`Accept-Ranges`      ],
+      `Last-Modified`        : Option[`Last-Modified`      ],
+      `Cache-Control`        : Option[`Cache-Control`      ],
+      `Expires`              : Option[`Expires`            ],
       `x-amz-delete-marker`  : Option[Boolean],
       `x-amz-version-id`     : Option[String],
       `x-amz-request-charged`: Option[String],
       `x-amz-request-id`     : String,
       `x-amz-id-2`           : String,
+      //...
     ) extends S3Response:
       def exists: Boolean = ETag.nonEmpty
+
+  object GetObject:
+    def apply[F[_]: Async](profile: Aws.Profile)(http: KoHttpClient[F, ?])(req: Request)
+        (using log: Logger[F]): Resource[F, (Stream[F, Byte], Response)] =
+      import profile.{credentials, region}
+      for
+        http <- Resource.eval(http.prependHostName(s"${req.bucket}.").GET(req.key)
+          .withParamOpt("partNumber", req.partNumber)
+          .withParamOpt("versionId" , req.versionId)
+          .withParamOpt("response-cache-control"      , req.`response-cache-control`      .map(_.value))
+          .withParamOpt("response-content-type"       , req.`response-content-type`       .map(_.value))
+          .withParamOpt("response-content-disposition", req.`response-content-disposition`.map(_.value))
+          .withParamOpt("response-content-encoding"   , req.`response-content-encoding`   .map(_.value))
+          .withParamOpt("response-content-language"   , req.`response-content-language`   .map(_.value))
+          .withParamOpt("response-expires"            , req.`response-expires`            .map(_.value))
+          .withHeaderOpt(req.`Range`              .map(_.toRaw1))
+          .withHeaderOpt(req.`If-Match`           .map(_.toRaw1))
+          .withHeaderOpt(req.`If-None-Match`      .map(_.toRaw1))
+          .withHeaderOpt(req.`If-Modified-Since`  .map(_.toRaw1))
+          .withHeaderOpt(req.`If-Unmodified-Since`.map(_.toRaw1))
+          .withHeaderOpt(req.`x-amz-server-side-encryption-customer-algorithm`
+              .map("x-amz-server-side-encryption-customer-algorithm" -> _))
+          .withHeaderOpt(req.`x-amz-server-side-encryption-customer-key`
+              .map("x-amz-server-side-encryption-customer-key" -> _))
+          .withHeaderOpt(req.`x-amz-server-side-encryption-customer-key-MD5`
+              .map("x-amz-server-side-encryption-customer-key-MD5" -> _))
+          .withHeaderOpt(req.`x-amz-request-payer`        .map("x-amz-request-payer"         -> _))
+          .withHeaderOpt(req.`x-amz-expected-bucket-owner`.map("x-amz-expected-bucket-owner" -> _))
+          .withHeaderOpt(req.`x-amz-checksum-mode`        .map("x-amz-checksum-mode"         -> _))
+          .evalMapRequest(AwsSigV4.`UNSIGNED-PAYLOAD`(_, credentials, region, "s3"))
+        )
+
+        result <- http.run.expectSuccess.resource.evalMap: resp => // TODO Not Modified status
+          val label = "HeadObject: response"
+          inline def getSingleTextRequired(key: CIString) =
+              resp.headers.getSingleTextRequired(key, label)
+          inline def getSingleText(key: CIString) =
+              resp.headers.getSingleText(key, label)
+          inline def getSingleBoolean(key: CIString) =
+              resp.headers.getSingleBoolean(key, label)
+          for
+            ETag                    <- resp.headers.get[ETag].pure
+            `Content-Length`        <- resp.headers.get[`Content-Length`].pure
+            `Content-Range`         <- resp.headers.get[`Content-Range`].pure
+            `Content-Type`          <- resp.headers.get[`Content-Type`] match // TODO hard to generalize
+              case Some(value) => value.pure
+              case None        => log.warn(s"$label: Content-Type is missing; treating it as the empty")
+                                      .as(`Content-Type`(MediaType.application.`octet-stream`))
+            `Content-Disposition`   <- resp.headers.get[`Content-Disposition`].pure
+            `Content-Encoding`      <- resp.headers.get[`Content-Encoding`].pure
+            `Content-Language`      <- resp.headers.get[`Content-Language`].pure
+            `Accept-Ranges`         <- resp.headers.get[`Accept-Ranges`].pure
+            `Last-Modified`         <- resp.headers.get[`Last-Modified`].pure
+            `Cache-Control`         <- resp.headers.get[`Cache-Control`].pure
+            `Expires`               <- resp.headers.get[`Expires`].pure
+            `x-amz-delete-marker`   <- getSingleBoolean     (ci"x-amz-delete-marker")
+            `x-amz-version-id`      <- getSingleText        (ci"x-amz-version-id")
+            `x-amz-request-charged` <- getSingleText        (ci"x-amz-request-charged")
+            `x-amz-request-id`      <- getSingleTextRequired(ci"x-amz-request-id")
+            `x-amz-id-2`            <- getSingleTextRequired(ci"x-amz-id-2")
+          yield
+            (resp.body, Response(
+              ETag,
+              `Content-Length`,
+              `Content-Range`,
+              `Content-Type`,
+              `Content-Disposition`,
+              `Content-Encoding`,
+              `Content-Language`,
+              `Accept-Ranges`,
+              `Last-Modified`,
+              `Cache-Control`,
+              `Expires`,
+              `x-amz-delete-marker`,
+              `x-amz-version-id`,
+              `x-amz-request-charged`,
+              `x-amz-request-id`,
+              `x-amz-id-2`,
+            ))
+
+      yield
+        result
+
+    case class Request(
+      bucket                        : String,
+      key                           : String,
+      partNumber                    : Option[String               ] = None,
+      versionId                     : Option[String               ] = None,
+      `response-cache-control`      : Option[`Cache-Control`      ] = None,
+      `response-content-type`       : Option[`Content-Type`       ] = None,
+      `response-content-disposition`: Option[`Content-Disposition`] = None,
+      `response-content-encoding`   : Option[`Content-Encoding`   ] = None,
+      `response-content-language`   : Option[`Content-Language`   ] = None,
+      `response-expires`            : Option[`Expires`            ] = None,
+      `Range`                       : Option[`Range`              ] = None,
+      `If-Match`                    : Option[`If-Match`           ] = None,
+      `If-None-Match`               : Option[`If-None-Match`      ] = None,
+      `If-Modified-Since`           : Option[`If-Modified-Since`  ] = None,
+      `If-Unmodified-Since`         : Option[`If-Unmodified-Since`] = None,
+      `x-amz-server-side-encryption-customer-algorithm`: Option[String] = None,
+      `x-amz-server-side-encryption-customer-key`      : Option[String] = None,
+      `x-amz-server-side-encryption-customer-key-MD5`  : Option[String] = None,
+      `x-amz-request-payer`                            : Option[String] = None,
+      `x-amz-expected-bucket-owner`                    : Option[String] = None,
+      `x-amz-checksum-mode`                            : Option[String] = None,
+    )
+
+    case class Response(
+      ETag                   : Option[ETag                 ],
+      `Content-Length`       : Option[`Content-Length`     ],
+      `Content-Range`        : Option[`Content-Range`      ],
+      `Content-Type`         : `Content-Type`, // default application/octet-stream
+      `Content-Disposition`  : Option[`Content-Disposition`],
+      `Content-Encoding`     : Option[`Content-Encoding`   ],
+      `Content-Language`     : Option[`Content-Language`   ],
+      `Accept-Ranges`        : Option[`Accept-Ranges`      ],
+      `Last-Modified`        : Option[`Last-Modified`      ],
+      `Cache-Control`        : Option[`Cache-Control`      ],
+      `Expires`              : Option[`Expires`            ],
+      `x-amz-delete-marker`  : Option[Boolean],
+      `x-amz-version-id`     : Option[String],
+      `x-amz-request-charged`: Option[String],
+      `x-amz-request-id`     : String,
+      `x-amz-id-2`           : String,
+      //...
+    ) extends S3Response
 
   /*
    * 1. Unversioned bucket: permanently deletes the object
@@ -556,6 +708,7 @@ package object s3:
           .withParamOpt("versionId", req.versionId)
           .withHeaderOpt(req.`If-Match`           .map(_.toRaw1))
           .evalMapRequest(AwsSigV4.`UNSIGNED-PAYLOAD`(_, credentials, region, "s3"))
+
         result <- http.run.expectSuccess.resource.use: resp =>
           val label = "DeleteObject: response"
           inline def getSingleTextRequired(key: CIString) =
