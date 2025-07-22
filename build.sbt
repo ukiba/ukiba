@@ -90,9 +90,9 @@ lazy val ko_aws = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_aws")
     buildInfoPackage := "jp.ukiba.koneko.ko_aws",
 
     libraryDependencies ++= Seq(
-      "software.amazon.awssdk" % "auth"     % "2.31.78",
-      "software.amazon.awssdk" % "sso"      % "2.31.78", // avoid `To use Sso related properties in the '...' profile, the 'sso' service module must be on the class path.`
-      "software.amazon.awssdk" % "ssooidc"  % "2.31.78", // avoid `To use SSO OIDC related properties in the '...' profile, the 'ssooidc' service module must be on the class path.`
+      "software.amazon.awssdk" % "auth"     % "2.32.6",
+      "software.amazon.awssdk" % "sso"      % "2.32.6", // avoid `To use Sso related properties in the '...' profile, the 'sso' service module must be on the class path.`
+      "software.amazon.awssdk" % "ssooidc"  % "2.32.6", // avoid `To use SSO OIDC related properties in the '...' profile, the 'ssooidc' service module must be on the class path.`
       "org.http4s" %%% "http4s-ember-client" % "1.0.0-M44" % Test,
     ),
   )
