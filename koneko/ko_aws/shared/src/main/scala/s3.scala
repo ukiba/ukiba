@@ -26,44 +26,6 @@ import java.time.Instant
     https://github.com/http4s/http4s-fs2-data has no releases for 16 months
 */
 package object s3:
-  // https://docs.aws.amazon.com/general/latest/gr/s3.html
-  object endpointOf:
-    def apply(regionCode: String): Uri = s3(regionCode)
-
-    def s3(regionCode: String): Uri =
-      Uri.unsafeFromString(s"https://s3.$regionCode.amazonaws.com/")
-
-    def s3tables(regionCode: String): Uri =
-      Uri.unsafeFromString(s"https://s3tables.$regionCode.amazonaws.com/")
-
-    object `s3-accesspoint`:
-      def apply(accessPoint: String, regionCode: String): Uri =
-        Uri.unsafeFromString(s"https://$accessPoint.s3-accesspoint.$regionCode.amazonaws.com/")
-
-      def dualstack(accessPoint: String, regionCode: String): Uri =
-        Uri.unsafeFromString(s"https://$accessPoint.s3-accesspoint.$regionCode.amazonaws.com/")
-
-    object `s3-accesspoint-fips`:
-      def apply(accessPoint: String, regionCode: String): Uri =
-        Uri.unsafeFromString(s"https://$accessPoint.s3-accesspoint-fips.$regionCode.amazonaws.com/")
-
-      def dualstack(accessPoint: String, regionCode: String): Uri =
-        Uri.unsafeFromString(s"https://$accessPoint.s3-accesspoint-fips.$regionCode.amazonaws.com/")
-
-    object `s3-control`:
-      def apply(accountId: String, regionCode: String): Uri =
-        Uri.unsafeFromString(s"https://$accountId.s3-control.$regionCode.amazonaws.com/")
-
-      def dualstack(accountId: String, regionCode: String): Uri =
-        Uri.unsafeFromString(s"https://$accountId.s3-control.$regionCode.amazonaws.com/")
-
-    object `s3-control-fips`:
-      def apply(accountId: String, regionCode: String): Uri =
-        Uri.unsafeFromString(s"https://$accountId.s3-control-fips.$regionCode.amazonaws.com/")
-
-      def dualstack(accountId: String, regionCode: String): Uri =
-        Uri.unsafeFromString(s"https://$accountId.s3-control-fips.$regionCode.amazonaws.com/")
-
   import XmlParser.{Parser, expect, optPat, repPat, startTag, endTag, textOnlyTag, textNonEmptyOnlyTag, textOnlyTagOpt}
 
   type Timestamp = String // TODO
@@ -226,12 +188,13 @@ package object s3:
         (using Logger[F]): F[Response] =
       import profile.{credentials, region}
       for
-        http <- http.GET("")
+        http <- http.withUri(profile.endpointUriOf("s3")).GET("")
           .withParamOpt("bucket-region"     , req.`bucket-region`)
           .withParamOpt("continuation-token", req.`continuation-token`)
           .withParamOpt("max-buckets"       , req.`max-buckets`)
           .withParamOpt("prefix"            , req.`prefix`)
           .evalMapRequest(AwsSigV4.`UNSIGNED-PAYLOAD`(_, credentials, region, "s3"))
+
         result <- http.acceptString.run.expectSuccess.resource.use: resp =>
           resp.body
             .through(text.utf8.decode)
@@ -338,7 +301,7 @@ package object s3:
         (using Logger[F]): F[Response] =
       import profile.{credentials, region}
       for
-        http <- http.prependHostName(s"${req.bucket}.").GET("")
+        http <- http.withUri(profile.endpointUriOfS3(req.bucket)).GET("")
           .withParam   ("list-type"         , 2)
           .withParamOpt("continuation-token", req.`continuation-token`)
           .withParamOpt("delimiter"         , req.`delimiter`)
@@ -347,6 +310,7 @@ package object s3:
           .withParamOpt("prefix"            , req.`prefix`)
           .withParamOpt("start-after"       , req.`start-after`)
           .evalMapRequest(AwsSigV4.`UNSIGNED-PAYLOAD`(_, credentials, region, "s3"))
+
         result <- http.acceptString.run.expectSuccess.resource.use: resp =>
           resp.body
             .through(text.utf8.decode)
@@ -397,7 +361,7 @@ package object s3:
       import profile.{credentials, region}
       require(req.`Content-Length`.nonEmpty, "the payload length must be known") // even when streaming chunks
       for
-        http <- http.prependHostName(s"${req.bucket}.").PUT(req.key)
+        http <- http.withUri(profile.endpointUriOfS3(req.bucket)).PUT(req.key)
           .withBody(req.content)
           .withHeaderOpt(req.`Cache-Control`      .map(_.toRaw1))
           .withHeaderOpt(req.`Content-Disposition`.map(_.toRaw1))
@@ -466,7 +430,7 @@ package object s3:
         (using log: Logger[F]): F[Response] =
       import profile.{credentials, region}
       for
-        http <- http.prependHostName(s"${req.bucket}.").HEAD(req.key)
+        http <- http.withUri(profile.endpointUriOfS3(req.bucket)).HEAD(req.key)
           .withParamOpt("partNumber", req.partNumber)
           .withParamOpt("versionId" , req.versionId)
           .withParamOpt("response-cache-control"      , req.`response-cache-control`      .map(_.value))
@@ -572,7 +536,7 @@ package object s3:
         (using log: Logger[F]): Resource[F, (Stream[F, Byte], Response)] =
       import profile.{credentials, region}
       for
-        http <- Resource.eval(http.prependHostName(s"${req.bucket}.").GET(req.key)
+        http <- Resource.eval(http.withUri(profile.endpointUriOfS3(req.bucket)).GET(req.key)
           .withParamOpt("partNumber", req.partNumber)
           .withParamOpt("versionId" , req.versionId)
           .withParamOpt("response-cache-control"      , req.`response-cache-control`      .map(_.value))
@@ -704,7 +668,7 @@ package object s3:
         (using Logger[F]): F[Response] =
       import profile.{credentials, region}
       for
-        http <- http.prependHostName(s"${req.bucket}.").DELETE(req.key)
+        http <- http.withUri(profile.endpointUriOfS3(req.bucket)).DELETE(req.key)
           .withParamOpt("versionId", req.versionId)
           .withHeaderOpt(req.`If-Match`           .map(_.toRaw1))
           .evalMapRequest(AwsSigV4.`UNSIGNED-PAYLOAD`(_, credentials, region, "s3"))

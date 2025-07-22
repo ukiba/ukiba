@@ -15,10 +15,9 @@ class ObjectTests extends AwsSuite:
   given log: Logger[F] = LoggerFactory[F].getLogger
 
   val bucket = "ko-aws-test-2025-07" // has to exist
+  def http = KoHttpClient(client)
 
   test("scenario"):
-    val http = KoHttpClient(client).withUri(endpointOf(profile.region))
-
     for
       list1 <- ListObjectsV2(profile)(http)(ListObjectsV2.Request(bucket))
 
@@ -46,5 +45,5 @@ class ObjectTests extends AwsSuite:
         yield ()
 
       logs <- showLogged(_ => true)
-      _ = println(logs.mkString("\n"))
+      //_ = println(logs.mkString("\n"))
     yield ()

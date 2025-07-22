@@ -44,9 +44,14 @@ object AwsSigV4:
     amzDate = exeTime.atUtcZone.format(amzDateFmt)
 
     // required headers
-    host = req.headers.get[Host].map(_.host)
-        .orElse(req.uri.authority.map(_.host.renderString))
-        .getOrElse("")
+    host =
+      inline def render(host: String, port: Option[Int]): String =
+        // MinIO drops the port in the signature calculation
+        host//s"$host${port.map(":" + _).mkString}"
+      req.headers.get[Host].map(host => render(host.host, host.port))
+          .orElse(req.uri.authority.map(authority => render(authority.host.renderString, authority.port)))
+          .getOrElse:
+            throw IllegalArgumentException(s"No host is found in request")
     requiredHeaders = Seq(
       "host"                 -> host, // host header (HTTP/1.1) or the :authority header (HTTP/2)
       "x-amz-content-sha256" -> `x-amz-content-sha256`,
@@ -70,11 +75,16 @@ object AwsSigV4:
     signedHeadersNames = canonicalHeaders.map(_._1).mkString(";")
 
     // canonical request
-    canonicalUriPath = Uri.removeDotSegments(req.uri.path).segments.map(_.decoded())
+    canonicalUriPath = Uri.Path(
+      Uri.removeDotSegments(req.uri.path).segments
+          .map(_.decoded()).map(Aws.uriEncode).map(Uri.Path.Segment), // re-encode according to the AWS rule
+      true, // absolute,
+      req.uri.path.endsWithSlash
+    )
     canonicalQuery = req.uri.query.params.toSeq.sortBy(_._1)
     canonicalReqHash = Seq(
       req.method.name,
-      canonicalUriPath.map(Aws.uriEncode).mkString("/", "/", ""), // re-encode according to the AWS rule
+      canonicalUriPath.toString,
       canonicalQuery.map { (key, value) => s"${Aws.uriEncode(key)}=${Aws.uriEncode(value)}" }.mkString("&"),
       canonicalHeaders.map { (key, value) => s"$key:$value\n" }.mkString, // newline at the end
       signedHeadersNames,

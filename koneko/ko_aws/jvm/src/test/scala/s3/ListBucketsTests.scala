@@ -10,10 +10,11 @@ import cats.syntax.all.*
 class ListBucketsTests extends AwsSuite:
   given log: Logger[F] = LoggerFactory[F].getLogger
 
+  def http = KoHttpClient(client)
+
   nest("params"):
     test("none"):
       for
-        http = KoHttpClient(client).withUri(endpointOf(profile.region))
         resp <- ListBuckets(profile)(http)(ListBuckets.Request())
       yield
         println(s"resp = $resp")
@@ -21,7 +22,6 @@ class ListBucketsTests extends AwsSuite:
 
     test("bucket-region"):
       for
-        http = KoHttpClient(client).withUri(endpointOf(profile.region))
         resp <- ListBuckets(profile)(http)(ListBuckets.Request(`bucket-region` = Some(AwsRegion.Tokyo)))
       yield
         println(s"resp = $resp")
@@ -29,7 +29,6 @@ class ListBucketsTests extends AwsSuite:
 
     test("max-buckets"):
       for
-        http = KoHttpClient(client).withUri(endpointOf(profile.region))
         resp <- ListBuckets(profile)(http)(ListBuckets.Request(`max-buckets` = Some(1)))
       yield
         println(s"resp = $resp")

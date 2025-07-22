@@ -153,9 +153,6 @@ object KoHttpRequest:
     def withHost(ipAddr: ip4s.IpAddress): Self = withHost(Host.fromIpAddress(ipAddr))
     def mapHost(func: Host => Host): Self = mapAuthority: authority =>
       authority.copy(host = func(authority.host))
-    def prependHostName(prefix: String): Self = mapHost: // used by S3 ListObjectsV2
-      case Uri.RegName(name) => Uri.RegName(name.transform(prefix + _))
-      case host => throw IllegalStateException(s"host is not a name: $host")
 
     def unsafeWithHost(host: String): Self = ip4s.Host.fromString(host) match
       case Some(host: ip4s.Hostname) => withHost(host)

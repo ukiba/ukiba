@@ -24,6 +24,10 @@ package object ko_java:
 
     def dropRightWhile(pred: Char => Boolean): String = str.dropRight(str.countRight(pred))
 
+    def replaceFirstLiterally(target: String, replacement: String): String = str.indexOf(target) match
+      case -1    => str
+      case index => s"${str.take(index)}$replacement${str.drop(index + target.length)}"
+
     /**
      * Truncates the string if its length is more than maxLen.
      * This appends the given suffix when truncated (the total length will be maxLen)
