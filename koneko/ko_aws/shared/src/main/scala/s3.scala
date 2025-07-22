@@ -109,10 +109,10 @@ package object s3:
       yield value
 
   // MinIO (Vultr) and Wasabi seem to send both, but
-  // Cloudflare R2, Ceph Rados Gateway (RGW), and DigitalOcean Spaces seem to send only `x-amz‑request‑id`
+  // Cloudflare R2, Ceph Rados Gateway (RGW), and DigitalOcean Spaces seem to send only `x-amz-request-id`
   trait S3Response:
-    def `x-amz‑request‑id`: String
-    def `x-amz‑id‑2`      : String
+    def `x-amz-request-id`: String
+    def `x-amz-id-2`      : String
 
   /*
     The models could be generated with https://github.com/smithy-lang/smithy-java
@@ -415,12 +415,12 @@ package object s3:
             ETag               <- resp.headers.get[ETag] match // TODO hard to generalize
               case Some(value) => value.pure
               case None        => log.warn(s"$label: ETag is missing; treating it as the empty").as(ETag(""))
-            `x-amz‑request‑id` <- getSingleTextRequired(ci"x-amz-request-id")
-            `x-amz‑id‑2`       <- getSingleTextRequired(ci"x-amz-id-2")
+            `x-amz-request-id` <- getSingleTextRequired(ci"x-amz-request-id")
+            `x-amz-id-2`       <- getSingleTextRequired(ci"x-amz-id-2")
           yield Response(
             ETag,
-            `x-amz‑request‑id`,
-            `x-amz‑id‑2`,
+            `x-amz-request-id`,
+            `x-amz-id-2`,
           )
 
       yield
@@ -453,8 +453,8 @@ package object s3:
       //...
       //x-amz-checksum-sha256
       //...
-      `x-amz‑request‑id`     : String,
-      `x-amz‑id‑2`           : String,
+      `x-amz-request-id`     : String,
+      `x-amz-id-2`           : String,
     ) extends S3Response
 
   object HeadObject:
@@ -489,8 +489,8 @@ package object s3:
             `x-amz-delete-marker`   <- getSingleBoolean     (ci"x-amz-delete-marker")
             `x-amz-version-id`      <- getSingleText        (ci"x-amz-version-id")
             `x-amz-request-charged` <- getSingleText        (ci"x-amz-request-charged")
-            `x-amz‑request‑id`      <- getSingleTextRequired(ci"x-amz-request-id")
-            `x-amz‑id‑2`            <- getSingleTextRequired(ci"x-amz-id-2")
+            `x-amz-request-id`      <- getSingleTextRequired(ci"x-amz-request-id")
+            `x-amz-id-2`            <- getSingleTextRequired(ci"x-amz-id-2")
           yield
             resp.status match
               case Status.NotFound => require(ETag.isEmpty)
@@ -502,8 +502,8 @@ package object s3:
               `x-amz-delete-marker`,
               `x-amz-version-id`,
               `x-amz-request-charged`,
-              `x-amz‑request‑id`,
-              `x-amz‑id‑2`,
+              `x-amz-request-id`,
+              `x-amz-id-2`,
             )
 
       yield
@@ -536,8 +536,8 @@ package object s3:
       `x-amz-delete-marker`  : Option[Boolean],
       `x-amz-version-id`     : Option[String],
       `x-amz-request-charged`: Option[String],
-      `x-amz‑request‑id`     : String,
-      `x-amz‑id‑2`           : String,
+      `x-amz-request-id`     : String,
+      `x-amz-id-2`           : String,
     ) extends S3Response:
       def exists: Boolean = ETag.nonEmpty
 
@@ -568,14 +568,14 @@ package object s3:
             `x-amz-delete-marker`   <- getSingleBoolean     (ci"x-amz-delete-marker")
             `x-amz-version-id`      <- getSingleText        (ci"x-amz-version-id")
             `x-amz-request-charged` <- getSingleText        (ci"x-amz-request-charged")
-            `x-amz‑request‑id`      <- getSingleTextRequired(ci"x-amz-request-id")
-            `x-amz‑id‑2`            <- getSingleTextRequired(ci"x-amz-id-2")
+            `x-amz-request-id`      <- getSingleTextRequired(ci"x-amz-request-id")
+            `x-amz-id-2`            <- getSingleTextRequired(ci"x-amz-id-2")
           yield Response(
             `x-amz-delete-marker`,
             `x-amz-version-id`,
             `x-amz-request-charged`,
-            `x-amz‑request‑id`,
-            `x-amz‑id‑2`,
+            `x-amz-request-id`,
+            `x-amz-id-2`,
           )
 
       yield
@@ -592,8 +592,8 @@ package object s3:
       `x-amz-delete-marker`  : Option[Boolean],
       `x-amz-version-id`     : Option[String],
       `x-amz-request-charged`: Option[String],
-      `x-amz‑request‑id`     : String,
-      `x-amz‑id‑2`           : String,
+      `x-amz-request-id`     : String,
+      `x-amz-id-2`           : String,
     ) extends S3Response
 
   object DeleteObjects: // TODO XML rendering
