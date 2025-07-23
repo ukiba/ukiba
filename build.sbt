@@ -52,8 +52,7 @@ lazy val buildInfoSettings = Seq(
 val npmInstall = taskKey[File]("populate node_modules directory")
 
 lazy val ukiba = crossProject(JSPlatform, JVMPlatform).in(file("build/ukiba"))
-  .settings(
-  ).dependsOn(
+  .dependsOn(
     ko_openai,
     ko_aws,
     ko_ffmpeg,
@@ -80,7 +79,11 @@ lazy val ko_openai = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_op
       "org.http4s" %%% "http4s-circe" % "1.0.0-M44",
       "io.circe" %%% "circe-generic" % "0.14.14", // json
     ),
-  ).dependsOn(ko_http4s, ko_munit % "test")
+  )
+  .jsSettings(
+    Test / fork := false,
+  )
+  .dependsOn(ko_http4s, ko_munit % "test")
   .enablePlugins(BuildInfoPlugin)
 
 lazy val ko_aws = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_aws"))
@@ -95,6 +98,9 @@ lazy val ko_aws = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_aws")
       "software.amazon.awssdk" % "ssooidc"  % "2.32.6", // avoid `To use SSO OIDC related properties in the '...' profile, the 'ssooidc' service module must be on the class path.`
       "org.http4s" %%% "http4s-ember-client" % "1.0.0-M44" % Test,
     ),
+  )
+  .jsSettings(
+    Test / fork := false,
   )
   .dependsOn(ko_http4s, ko_fs2_xml, ko_munit % "test")
   .enablePlugins(BuildInfoPlugin)
@@ -115,7 +121,11 @@ lazy val ko_ffmpeg = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_ff
            //classifier "windows-x86_64"
            classifier "macosx-arm64",
     ),
-  ).dependsOn(ko_fs2)
+  )
+  .jsSettings(
+    Test / fork := false,
+  )
+  .dependsOn(ko_fs2)
   .enablePlugins(BuildInfoPlugin)
 
 lazy val ko_pdfbox = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_pdfbox"))
@@ -129,7 +139,11 @@ lazy val ko_pdfbox = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_pd
         exclude("commons-logging", "commons-logging"),
       "org.slf4j" % "jcl-over-slf4j" % "2.0.17",
     ),
-  ).dependsOn(ko_fs2)
+  )
+  .jsSettings(
+    Test / fork := false,
+  )
+  .dependsOn(ko_fs2)
   .enablePlugins(BuildInfoPlugin)
 
 lazy val ko_http4s = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_http4s"))
@@ -146,11 +160,15 @@ lazy val ko_http4s = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_ht
       "io.circe" %%% "circe-generic" % "0.14.14" % Test,
       "io.circe" %%% "circe-parser"  % "0.14.14" % Test,
     ),
-  ).jsSettings(
+  )
+  .jsSettings(
     libraryDependencies ++= Seq(
       "com.armanbilge" %%% "fs2-dom" % "0.3.0-M1",
     ),
-  ).dependsOn(ko_fs2, ko_munit % "test")
+
+    Test / fork := false,
+  )
+  .dependsOn(ko_fs2, ko_munit % "test")
   .enablePlugins(BuildInfoPlugin)
 
 lazy val ko_fs2_xml = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_fs2_xml"))
@@ -170,7 +188,11 @@ lazy val ko_fs2_xml = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_f
         */
         exclude("org.scala-lang", "scala3-library_3"), // fs2-data-xml 1.12.0 depends on scala3-library_3 3.3.6
     ),
-  ).dependsOn(ko_fs2, ko_munit % "test")
+  )
+  .jsSettings(
+    Test / fork := false,
+  )
+  .dependsOn(ko_fs2, ko_munit % "test")
   .enablePlugins(BuildInfoPlugin)
 
 lazy val ko_fs2 = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_fs2"))
@@ -182,7 +204,11 @@ lazy val ko_fs2 = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_fs2")
     libraryDependencies ++= Seq(
       "co.fs2" %%% "fs2-io" % "3.12.0",
     ),
-  ).dependsOn(ko_cats_effect, ko_scodec_bits, ko_munit % "test")
+  )
+  .jsSettings(
+    Test / fork := false,
+  )
+  .dependsOn(ko_cats_effect, ko_scodec_bits, ko_munit % "test")
   .enablePlugins(BuildInfoPlugin)
 
 lazy val ko_cats_effect = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_cats_effect"))
@@ -195,7 +221,11 @@ lazy val ko_cats_effect = crossProject(JSPlatform, JVMPlatform).in(file("koneko/
       "org.typelevel" %%% "cats-effect" % "3.6.3",
       "org.typelevel" %%% "log4cats-core" % "2.7.1", // there are alternative logging libraries
     ),
-  ).dependsOn(ko_cats, ko_munit % "test")
+  )
+  .jsSettings(
+    Test / fork := false,
+  )
+  .dependsOn(ko_cats, ko_munit % "test")
   .enablePlugins(BuildInfoPlugin)
 
 // some classes could be factored out into koinu/ko_munit later
@@ -210,7 +240,11 @@ lazy val ko_munit = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_mun
       "org.typelevel" %%% "munit-cats-effect" % "2.1.0", // TODO 2.1.0 depends on cats-effect 3.6.0
       "org.typelevel" %%% "log4cats-testing" % "2.7.1",
     ),
-  ).dependsOn(ko_cats)
+  )
+  .jsSettings(
+    Test / fork := false,
+  )
+  .dependsOn(ko_cats)
   .enablePlugins(BuildInfoPlugin)
 
 lazy val ko_html = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_html"))
@@ -223,6 +257,9 @@ lazy val ko_html = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_html
       "org.typelevel" %%% "cats-parse" % "1.1.0",
     ),
   )
+  .jvmSettings(
+    Test / skip := true,
+  )
   .jsSettings(
     jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv(),
     Test / test := (Test / test)
@@ -232,9 +269,8 @@ lazy val ko_html = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_html
     // scala-js-env-jsdom-nodejs has no support for ES modules yet
     // https://github.com/scala-js/scala-js-env-jsdom-nodejs/issues/56
     Test / scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.NoModule)),
-  )
-  .jvmSettings(
-    Test / skip := true,
+
+    Test / fork := false,
   )
   .dependsOn(ko_cats)
   .enablePlugins(BuildInfoPlugin)
@@ -248,7 +284,11 @@ lazy val ko_cats = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_cats
     libraryDependencies ++= Seq(
       "org.typelevel" %%% "cats-core" % "2.13.0",
     ),
-  ).dependsOn(ko_java)
+  )
+  .jsSettings(
+    Test / fork := false,
+  )
+  .dependsOn(ko_java)
   .enablePlugins(BuildInfoPlugin)
 
 lazy val ko_scodec_bits = crossProject(JSPlatform, JVMPlatform).in(file("koinu/ko_scodec_bits"))
@@ -260,7 +300,11 @@ lazy val ko_scodec_bits = crossProject(JSPlatform, JVMPlatform).in(file("koinu/k
     libraryDependencies ++= Seq(
       "org.scodec" %%% "scodec-bits" % "1.2.4",
     ),
-  ).dependsOn(ko_java)
+  )
+  .jsSettings(
+    Test / fork := false,
+  )
+  .dependsOn(ko_java)
   .enablePlugins(BuildInfoPlugin)
 
 lazy val ko_java = crossProject(JSPlatform, JVMPlatform).in(file("koinu/ko_java"))
@@ -268,6 +312,7 @@ lazy val ko_java = crossProject(JSPlatform, JVMPlatform).in(file("koinu/ko_java"
     commonSettings,
     buildInfoSettings,
     buildInfoPackage := "jp.ukiba.koinu.ko_java",
+
     libraryDependencies ++= Seq(
       "org.scalameta" %%% "munit" % "1.1.1",
     ),
@@ -278,7 +323,10 @@ lazy val ko_java = crossProject(JSPlatform, JVMPlatform).in(file("koinu/ko_java"
       "io.github.cquiroz" %%% "scala-java-time"      % "2.6.0", // java.time implementation
       "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.6.0", // avoid `ZoneRulesException: Unknown time-zone ID: Asia/Tokyo`
     ),
-  ).dependsOn(build)
+
+    Test / fork := false,
+  )
+  .dependsOn(build)
   .enablePlugins(BuildInfoPlugin)
 
 lazy val build = crossProject(JSPlatform, JVMPlatform).in(file("koinu/build"))
@@ -286,6 +334,9 @@ lazy val build = crossProject(JSPlatform, JVMPlatform).in(file("koinu/build"))
     commonSettings,
     buildInfoSettings,
     buildInfoPackage := "jp.ukiba.koinu.build",
+  )
+  .jsSettings(
+    Test / fork := false,
   )
   .enablePlugins(BuildInfoPlugin)
 
