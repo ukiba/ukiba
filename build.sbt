@@ -274,7 +274,7 @@ lazy val ko_java = crossProject(JSPlatform, JVMPlatform).in(file("koinu/ko_java"
   )
   .jsSettings(
     libraryDependencies ++= Seq(
-      "org.scala-js" %%% "scalajs-dom" % "2.8.0",
+      "org.scala-js" %%% "scalajs-dom" % "2.8.1",
       "io.github.cquiroz" %%% "scala-java-time"      % "2.6.0", // java.time implementation
       "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.6.0", // avoid `ZoneRulesException: Unknown time-zone ID: Asia/Tokyo`
     ),
