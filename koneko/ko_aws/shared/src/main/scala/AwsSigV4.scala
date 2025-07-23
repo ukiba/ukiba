@@ -1,6 +1,7 @@
 package jp.ukiba.koneko
 package ko_aws
 
+import jp.ukiba.koneko.ko_cats.effect.KoPlatformCompat.* // realTimeInstant in JS project
 import jp.ukiba.koinu.ko_java.{toHexString, utf8, sha256, hmac}
 import jp.ukiba.koinu.ko_java.time.atUtcZone
 
