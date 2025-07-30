@@ -32,12 +32,13 @@ object AwsSigV4:
 
   def `UNSIGNED-PAYLOAD`[F[_]: Sync](
     req: Request[F],
-    creds: Aws.Credentials,
+    creds: F[Aws.Credentials],
     region: String,
     service: String,
     canonicalHeaderNames: Seq[String] = defaultCanonicalHeaderNames, // supports glob at either end
   ): F[Request[F]] = for
     exeTime <- Sync[F].realTimeInstant
+    creds <- creds
 
     `x-amz-content-sha256` <- "UNSIGNED-PAYLOAD".pure
 

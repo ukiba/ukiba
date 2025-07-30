@@ -4,7 +4,7 @@ package ko_aws
 import jp.ukiba.koinu.ko_java.{truncate, replaceFirstLiterally}
 
 import org.http4s.Uri
-import cats.effect.Async
+import cats.effect.Sync
 import cats.syntax.all.*
 
 object Aws:
@@ -44,8 +44,8 @@ object Aws:
 
         set ko_aws.jvm / Test / envVars ++= Map("AWS_ENDPOINT_URL_S3" -> "http://localhost:9000", "AWS_ACCESS_KEY_ID" -> "minioadmin", "AWS_SECRET_ACCESS_KEY" -> "minioadmin", "AWS_REGION" -> "ap-northeast-1")
   */
-  case class Profile(
-    credentials: Credentials,
+  case class Profile[F[_]: Sync](
+    credentials: F[Credentials],
     region: String,
     endpointUrl: Option[String]       = Profile.defaultEndpointUrl, // global
     endpointUrlPrefix: Option[String] = Profile.defaultEndpointUrlPrefix,

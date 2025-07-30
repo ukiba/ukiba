@@ -5,10 +5,13 @@ import software.amazon.awssdk.auth.credentials.{AwsCredentials, AwsSessionCreden
 import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain
 import software.amazon.awssdk.core.exception.SdkClientException
 import org.typelevel.log4cats.Logger
-import cats.effect.Async
+import cats.effect.Sync
 import cats.syntax.all.*
 
 object AwsSdk:
+  val credentialsProvider = DefaultCredentialsProvider.builder.build
+  val regionProviderChain = DefaultAwsRegionProviderChain.builder.build
+
   /**
     @throws SdkClientException when not able to load, or
             when the SSO token is already expired (the cause is null).
@@ -18,10 +21,12 @@ object AwsSdk:
     aws-sdk 2.31.x or later:
       SsoCredentialsProvider and SsoOidcTokenProvider automatically refreshes the token
   */
-  def defaultCredentials[F[_]: Async](using log: Logger[F]): F[Aws.Credentials] =
-    val F = Async[F]
+  def defaultCredentials[F[_]: Sync](using log: Logger[F]): F[Aws.Credentials] =
+    val F = Sync[F]
     F.blocking:
-      DefaultCredentialsProvider.builder.build.resolveCredentials match
+      // resolveCredentials is to be called for every request (it caches / refreshes the credentials)
+      // https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credential-caching.html
+      credentialsProvider.resolveCredentials match
         case creds: AwsSessionCredentials => Aws.Credentials.WithSession(
           creds.accessKeyId,
           creds.secretAccessKey,
@@ -34,15 +39,15 @@ object AwsSdk:
         )
 
   /** @throws SdkClientException when not able to load */
-  def defaultRegion[F[_]: Async](using log: Logger[F]): F[String] =
-    val F = Async[F]
+  def defaultRegion[F[_]: Sync](using log: Logger[F]): F[String] =
+    val F = Sync[F]
     F.blocking:
-      DefaultAwsRegionProviderChain.builder.build.getRegion.id
+      regionProviderChain.getRegion.id
 
   /** @throws SdkClientException when not able to load */
-  def defaultProfile[F[_]: Async](using log: Logger[F]): F[Aws.Profile] =
+  def defaultProfile[F[_]: Sync](using log: Logger[F]): F[Aws.Profile[F]] =
     for
-      creds <- defaultCredentials
+      creds = defaultCredentials // don't evaluate here
       region <- defaultRegion
     yield
       Aws.Profile(creds, region)

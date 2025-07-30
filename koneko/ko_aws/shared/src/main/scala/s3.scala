@@ -183,7 +183,7 @@ package object s3:
           yield Bucket(Name, CreationDate, BucketRegion)
 
   object ListBuckets:
-    def apply[F[_]: Async](profile: Aws.Profile)(http: KoHttpClient[F, ?])(req: Request,
+    def apply[F[_]: Async](profile: Aws.Profile[F])(http: KoHttpClient[F, ?])(req: Request,
         dontRepeatWithContinuationToken: Boolean = false)
         (using Logger[F]): F[Response] =
       import profile.{credentials, region}
@@ -296,7 +296,7 @@ package object s3:
             RestoreStatus, Size, StorageClass)
 
   object ListObjectsV2:
-    def apply[F[_]: Async](profile: Aws.Profile)(http: KoHttpClient[F, ?])(req: Request,
+    def apply[F[_]: Async](profile: Aws.Profile[F])(http: KoHttpClient[F, ?])(req: Request,
         dontRepeatWithContinuationToken: Boolean = false)
         (using Logger[F]): F[Response] =
       import profile.{credentials, region}
@@ -355,7 +355,7 @@ package object s3:
     type Response = ListBucketResult // TODO extends S3Response
 
   object PutObject:
-    def apply[F[_]: Async](profile: Aws.Profile)(http: KoHttpClient[F, ?])(req: Request[F],
+    def apply[F[_]: Async](profile: Aws.Profile[F])(http: KoHttpClient[F, ?])(req: Request[F],
         dontRepeatWithContinuationToken: Boolean = false)
         (using log: Logger[F]): F[Response] =
       import profile.{credentials, region}
@@ -426,7 +426,7 @@ package object s3:
     ) extends S3Response
 
   object HeadObject:
-    def apply[F[_]: Async](profile: Aws.Profile)(http: KoHttpClient[F, ?])(req: Request)
+    def apply[F[_]: Async](profile: Aws.Profile[F])(http: KoHttpClient[F, ?])(req: Request)
         (using log: Logger[F]): F[Response] =
       import profile.{credentials, region}
       for
@@ -532,7 +532,7 @@ package object s3:
       def exists: Boolean = ETag.nonEmpty
 
   object GetObject:
-    def apply[F[_]: Async](profile: Aws.Profile)(http: KoHttpClient[F, ?])(req: Request)
+    def apply[F[_]: Async](profile: Aws.Profile[F])(http: KoHttpClient[F, ?])(req: Request)
         (using log: Logger[F]): Resource[F, (Stream[F, Byte], Response)] =
       import profile.{credentials, region}
       for
@@ -664,7 +664,7 @@ package object s3:
    *     2. with versionId: permanently deletes that version 
    */
   object DeleteObject:
-    def apply[F[_]: Async](profile: Aws.Profile)(http: KoHttpClient[F, ?])(req: Request)
+    def apply[F[_]: Async](profile: Aws.Profile[F])(http: KoHttpClient[F, ?])(req: Request)
         (using Logger[F]): F[Response] =
       import profile.{credentials, region}
       for
