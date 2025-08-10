@@ -2,6 +2,9 @@
 target/
 .bsp/
 
+# IntelliJ IDEA
+.idea/
+
 # metals
 .metals/
 metals.sbt
