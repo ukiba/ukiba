@@ -2,6 +2,14 @@
 target/
 .bsp/
 
+# metals
+.metals/
+metals.sbt
+.bloop/
+
+# vscode
+.vscode/
+
 # npm
 node_modules/
 
