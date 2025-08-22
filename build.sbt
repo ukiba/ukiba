@@ -57,6 +57,7 @@ lazy val ukiba = crossProject(JSPlatform, JVMPlatform).in(file("build/ukiba"))
     ko_aws,
     ko_ffmpeg,
     ko_pdfbox,
+    ko_pdf,
     ko_http4s,
     ko_fs2_xml,
     ko_fs2,
@@ -139,6 +140,18 @@ lazy val ko_pdfbox = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_pd
         exclude("commons-logging", "commons-logging"),
       "org.slf4j" % "jcl-over-slf4j" % "2.0.17",
     ),
+  )
+  .jsSettings(
+    Test / fork := false,
+  )
+  .dependsOn(ko_fs2)
+  .enablePlugins(BuildInfoPlugin)
+
+lazy val ko_pdf = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_pdf"))
+  .settings(
+    commonSettings,
+    buildInfoSettings,
+    buildInfoPackage := "jp.ukiba.koneko.ko_pdf",
   )
   .jsSettings(
     Test / fork := false,
