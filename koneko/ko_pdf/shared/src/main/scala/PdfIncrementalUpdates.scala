@@ -1,14 +1,13 @@
 package jp.ukiba.koneko
 package ko_pdf
 
+import internal.*  // TODO get rid of this
+
 import fs2.io.file.{FileHandle, Files, Flags, Path}
 import fs2.Chunk
 import cats.effect.Sync
 import cats.syntax.all.*
-
-import scala.annotation.tailrec
-import java.io.IOException
-import java.nio.charset.StandardCharsets.UTF_8
+import cats.ApplicativeThrow
 
 class PdfIncrementalUpdates[F[_]: Files: Sync]:
   inline def F = Sync[F]
@@ -38,7 +37,7 @@ class PdfIncrementalUpdates[F[_]: Files: Sync]:
       // 10 startxref EOL
       //  2 z EOL
       //  5 %%EOF
-      _ <- if size < 40 then F.raiseError(PdfException(f"PDF size is too small: $size%,d bytes")) else F.unit
+      _ <- if size < 40 then raisePdfException(f"PDF size is too small: $size%,d bytes") else F.unit
 
       lastRangeSize = if size > lastRangeMaxSize then lastRangeMaxSize else size.toInt
       lastRange <- fh.readFully(lastRangeSize, size - lastRangeSize)
@@ -46,11 +45,11 @@ class PdfIncrementalUpdates[F[_]: Files: Sync]:
       remaining <- lastRange.dropRightWhile(_.toChar.isWhitespace).pure
       remaining <-
         if remaining.size < 5 then
-          F.raiseError(PdfException(f"Non whitespace text is not found in the last $lastRangeMaxSize%,d bytes"))
+          raisePdfException(f"Non whitespace text is not found in the last $lastRangeMaxSize%,d bytes")
         else
-          val eofMarker = String(remaining.takeRight(5).toArray, UTF_8)  // TODO use ko_scala extension method
+          val eofMarker = remaining.takeRight(5).toArray.parseString
           if !eofMarker.equalsIgnoreCase("%%EOF") then
-            F.raiseError(PdfException(f"%%EOF is not found in the last $lastRangeMaxSize%,d bytes"))
+            raisePdfException(f"%%%%EOF is not found in the last $lastRangeMaxSize%,d bytes")
           else
             remaining.dropRight(5).pure
 
@@ -58,68 +57,31 @@ class PdfIncrementalUpdates[F[_]: Files: Sync]:
       (xrefOffset, remaining) <-
         val numDigits = remaining.countRight(ch => ch >= '0' && ch <= '9')
         if numDigits > 0 then
-          (String(remaining.takeRight(numDigits).toArray, UTF_8).toInt, remaining.dropRight(numDigits)).pure
+          (remaining.takeRight(numDigits).toArray.parseString.toInt, remaining.dropRight(numDigits)).pure
         else
-          F.raiseError(PdfException(f"xrefOffset is not found"))
+          raisePdfException(f"xrefOffset is not found")
       _ = println(f"xrefOffset = $xrefOffset%,d")
 
       remaining <- remaining.dropRightWhile(_.toChar.isWhitespace).pure
       remaining <-
         if remaining.size < 9 then
-          F.raiseError(PdfException(f"startxref is not found in the last $lastRangeMaxSize%,d bytes"))
+          raisePdfException(f"startxref is not found in the last $lastRangeMaxSize%,d bytes")
         else
-          val startxref = String(remaining.takeRight(9).toArray, UTF_8)  // TODO use ko_scala extension method
+          val startxref = remaining.takeRight(9).toArray.parseString
           if !startxref.equalsIgnoreCase("startxref") then
-            F.raiseError(PdfException(f"startxref is not found in the last $lastRangeMaxSize%,d bytes"))
+            raisePdfException(f"startxref is not found in the last $lastRangeMaxSize%,d bytes")
           else
             remaining.dropRight(9).pure
 
     yield ()
 
 object PdfIncrementalUpdates:
-  class PdfException(message: String) extends Exception(message) // TODO ExceptionBase
+  class PdfException(message: String) extends ExceptionBase(message)
 
-  // FIXME the followings do not belong here
-  extension [F[_]: Sync](fh: FileHandle[F])
-    inline def F = Sync[F]
-
-    def readFully(numBytes: Int, offset: Long): F[Chunk[Byte]] =
-      def loop(accum: Chunk[Byte], remaining: Int, offset: Long, numEmptyReads: Int = 0): F[Chunk[Byte]] =
-        if remaining == 0 then
-          accum.pure
-
-        else if remaining > 0 then
-          for
-            opt <- fh.read(remaining, offset)
-            ret <- opt match
-              case Some(bytes) =>
-                if bytes.nonEmpty then
-                  loop(accum ++ bytes, remaining - bytes.size, offset + bytes.size, 0)
-                else
-                  val nextNumEmptyReads = numEmptyReads + 1
-                  // TODO: warm when nextNumEmptyReads is divisible by, e.g., 10
-                  loop(accum, remaining, offset, numEmptyReads + 1)
-
-              case None =>
-                F.raiseError(IOException(f"read only ${accum.size}%,d / $numBytes%,d bytes"))
-          yield ret
-
-        else
-          F.raiseError(IOException(f"read remaining = $remaining%,d / $numBytes%,d bytes"))
-
-      loop(Chunk.empty, numBytes, offset)
-
-  // FIXME the followings do not belong here
-  extension [O](chunk: Chunk[O])
-    def countRight(pred: O => Boolean): Int =
-      @tailrec def loop(count: Int, lastIndex: Int): Int =
-        if (lastIndex >= 0 && pred(chunk(lastIndex)))
-          loop(count + 1, lastIndex - 1)
-        else
-          count
-      loop(0, chunk.size - 1)
-
-    def dropRightWhile(pred: O => Boolean): Chunk[O] = chunk.dropRight(chunk.countRight(pred))
+  // this lets raising the exception to be concise
+  def raisePdfException[F[_]: ApplicativeThrow, A](message: String): F[A] =
+    inline def F = ApplicativeThrow[F]
+    F.raiseError(PdfException(message))
 
 import cats.effect.{IO, IOApp, ExitCode}
 

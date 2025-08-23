@@ -50,7 +50,8 @@ package object ko_java:
     def numberWithoutZeroFractions: String = str.dropRightWhile(_ == '0').dropRightWhile(_ == '.')
 
   extension (bytes: Array[Byte])
-    // needs to mask with 0xff on Scala.js 1.17
+    def parseString(cs: Charset): String = String(bytes, cs)
+    def parseString: String = parseString(UTF_8)
 
     /*
       Lower case is consistent with
@@ -63,6 +64,7 @@ package object ko_java:
       2. RFC 4648 (Base16): upper case is used in the table
       3. RFC 8427 (DNS-in-JSON): Names that end in "HEX" ... in base16 encoding (hex with uppercase letters)
     */
+    // needs to mask with 0xff on Scala.js 1.17
     def toHexString             : String = bytes.map(bt => f"${bt & 0xff}%02x").mkString
     def toHexString(sep: String): String = bytes.map(bt => f"${bt & 0xff}%02x").mkString(sep)
 
