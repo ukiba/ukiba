@@ -76,7 +76,7 @@ lazy val ko_openai = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_op
     buildInfoPackage := "jp.ukiba.koneko.ko_openai",
 
     libraryDependencies ++= Seq(
-      "org.http4s" %%% "http4s-circe" % "1.0.0-M44",
+      "org.http4s" %%% "http4s-circe" % "1.0.0-M46",
       "io.circe" %%% "circe-generic" % "0.14.15", // json
     ),
   )
@@ -96,7 +96,7 @@ lazy val ko_aws = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_aws")
       "software.amazon.awssdk" % "auth"     % "2.32.10",
       "software.amazon.awssdk" % "sso"      % "2.32.10", // avoid `To use Sso related properties in the '...' profile, the 'sso' service module must be on the class path.`
       "software.amazon.awssdk" % "ssooidc"  % "2.32.10", // avoid `To use SSO OIDC related properties in the '...' profile, the 'ssooidc' service module must be on the class path.`
-      "org.http4s" %%% "http4s-ember-client" % "1.0.0-M44" % Test,
+      "org.http4s" %%% "http4s-ember-client" % "1.0.0-M46" % Test,
     ),
   )
   .jsSettings(
@@ -153,10 +153,10 @@ lazy val ko_http4s = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_ht
     buildInfoPackage := "jp.ukiba.koneko.ko_http4s",
 
     libraryDependencies ++= Seq(
-      "org.http4s" %%% "http4s-dsl"          % "1.0.0-M44",
-      "org.http4s" %%% "http4s-client"       % "1.0.0-M44",
-      "org.http4s" %%% "http4s-ember-client" % "1.0.0-M44" % Test,
-      "org.http4s" %%% "http4s-circe"        % "1.0.0-M44" % Test,
+      "org.http4s" %%% "http4s-dsl"          % "1.0.0-M46",
+      "org.http4s" %%% "http4s-client"       % "1.0.0-M46",
+      "org.http4s" %%% "http4s-ember-client" % "1.0.0-M46" % Test,
+      "org.http4s" %%% "http4s-circe"        % "1.0.0-M46" % Test,
       "io.circe" %%% "circe-generic" % "0.14.15" % Test,
       "io.circe" %%% "circe-parser"  % "0.14.15" % Test,
     ),
