@@ -135,7 +135,7 @@ lazy val ko_pdfbox = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_pd
     buildInfoPackage := "jp.ukiba.koneko.ko_pdfbox",
 
     libraryDependencies ++= Seq(
-      "org.apache.pdfbox" % "pdfbox" % "3.0.5"
+      "org.apache.pdfbox" % "pdfbox" % "3.0.6"
         exclude("commons-logging", "commons-logging"),
       "org.slf4j" % "jcl-over-slf4j" % "2.0.17",
     ),
