@@ -45,6 +45,9 @@ object internal:
   // FIXME the followings do not belong here
   // almost the same as ko_java
   extension [O](chunk: Chunk[O])
+    def dropWhile(pred: O => Boolean): Chunk[O] =
+      chunk.drop(chunk.count(pred))
+
     def countRight(pred: O => Boolean): Int =
       @tailrec def loop(count: Int, lastIndex: Int): Int =
         if (lastIndex >= 0 && pred(chunk(lastIndex)))
@@ -54,6 +57,36 @@ object internal:
       loop(0, chunk.size - 1)
 
     def dropRightWhile(pred: O => Boolean): Chunk[O] = chunk.dropRight(chunk.countRight(pred))
+
+    /** @return Some(indexOfFirstOccurance) or None */
+    def indexOfOpt(seq: Array[O], from: Int = 0): Option[Int] =
+      @tailrec def loop(current: Int, matched: Int = 0): Option[Int] =
+        if current - matched + seq.length <= chunk.size then
+          if chunk(current) == seq(matched) then
+            if matched + 1 == seq.length then
+              Some(current - matched)
+            else
+              loop(current + 1, matched + 1)
+          else
+            loop(current + 1, 0)
+        else
+          None
+      loop(from)
+
+    def indexOf(seq: Array[O], from: Int = 0): Int = indexOfOpt(seq, from).getOrElse(-1)
+
+    def indexWhereOpt(pred: O => Boolean, from: Int = 0): Option[Int] =
+      @tailrec def loop(index: Int): Option[Int] =
+        if index < chunk.size then
+          if pred(chunk(index)) then
+            Some(index)
+          else
+            loop(index + 1)
+        else
+          None
+      loop(from)
+
+    // fs2 3.12.0: indexWhere is implemented and returns Option[Int]
 
   // FIXME the followings do not belong here
   // the same as ko_java
