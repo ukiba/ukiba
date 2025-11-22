@@ -28,7 +28,7 @@ inThisBuild(Seq( // apply to every project in the build
 lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
     "org.typelevel" %% "log4cats-slf4j" % "2.7.1"               % Test, // depends on slf4j-api 1.7.36
-    "org.apache.logging.log4j" % "log4j-slf4j2-impl" % "2.25.1" % Test, // depends on slf4j-api 2.0.17
+    "org.apache.logging.log4j" % "log4j-slf4j2-impl" % "2.25.2" % Test, // depends on slf4j-api 2.0.17
     "org.slf4j" % "slf4j-api" % "2.0.17"                        % Test, // slf4j-2 is binary compatible with slf4j-1
   ),
 
