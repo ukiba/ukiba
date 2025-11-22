@@ -3,7 +3,7 @@ ThisBuild / organization := "jp.ukiba"
 
 // The default settings
 // Defining `ThisBuild / scalaVersion` avoids sbt-updates 0.6.3 to report update for scala-library
-ThisBuild / scalaVersion := "3.7.2"  
+ThisBuild / scalaVersion := "3.8.0-RC1"
 ThisBuild / scalacOptions ++= Seq(
   "-preview", // https://www.scala-lang.org/api/current/docs/docs/reference/preview/better-fors.html
 
