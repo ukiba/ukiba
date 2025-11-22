@@ -38,6 +38,16 @@ lazy val commonSettings = Seq(
   Test / fork := true,
   Test / javaOptions ++= Seq(
     "-Dcats.effect.tracing.buffer.size=8192", // the default 16 would not capture the entire stack trace
+
+    /*
+      Aviod the warnings on Java 25
+
+          WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+          WARNING: sun.misc.Unsafe::objectFieldOffset has been called by scala.runtime.LazyVals$ (file:/Users/kenichi/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/3.8.0-RC1/scala-library-3.8.0-RC1.jar)
+          WARNING: Please consider reporting this to the maintainers of class scala.runtime.LazyVals$
+          WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+    */
+    "--sun-misc-unsafe-memory-access=allow",
   ),
 )
 

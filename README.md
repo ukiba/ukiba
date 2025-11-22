@@ -16,7 +16,7 @@ This is an amalgamation of my code that could be reusable.
 
 ## Build environment
 
-1. Java 21 and [sbt](https://www.scala-sbt.org/)
+1. Java 25 and [sbt](https://www.scala-sbt.org/)
 
     1. [Coursier](https://get-coursier.io/) and
        [Corretto](https://aws.amazon.com/corretto/)
@@ -24,7 +24,7 @@ This is an amalgamation of my code that could be reusable.
 
            # set JAVA_HOME and PATH
            # optionally downloading the Java version if not already installed
-           eval $(cs java --jvm corretto:21 --env)
+           eval $(cs java --jvm corretto:25 --env)
 
 
 # The builds

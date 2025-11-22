@@ -16,13 +16,13 @@
 
 ## ビルド環境
 
-1. Java 21 と [sbt](https://www.scala-sbt.org/) ビルドツール
+1. Java 25 と [sbt](https://www.scala-sbt.org/) ビルドツール
 
     1. [Coursier](https://get-coursier.io/) と
        [Corretto](https://aws.amazon.com/corretto/) で
        シェル環境を準備する例
 
-           eval $(cs java --jvm corretto:21 --env)
+           eval $(cs java --jvm corretto:25 --env)
 
         1. 上記コマンドの実行前に Coursier をセットアップする必要があります
             1. Coursier をセットアップすると `java` と `sbt` もインストールされます
