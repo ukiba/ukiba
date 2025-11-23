@@ -32,8 +32,9 @@ case class KoHttpClient[F[_]: Temporal, A](
   req: KoHttpRequest[F, A],
   logConf: KoHttpLog.Conf,
 ) extends KoHttpRequest.UnderlyingOp[F, KoHttpClient[F, A]] with KoHttpLog[F]:
-  def underlying: Request[F] = req.underlying
-  def withUnderlying(underlying: Request[F]): KoHttpClient[F, A] = copy(req = req.withUnderlying(underlying))
+  protected def underlying: Request[F] = req.underlying
+  protected def withUnderlying(underlying: Request[F]): KoHttpClient[F, A] =
+      copy(req = req.withUnderlying(underlying))
 
   def withDecoder[B](decoder: EntityDecoder[F, B]): KoHttpClient[F, B] = copy(req = req.withDecoder(decoder))
   def acceptJson[B](using decoder: EntityDecoder[F, B]): KoHttpClient[F, B] = copy(req = req.acceptJson)

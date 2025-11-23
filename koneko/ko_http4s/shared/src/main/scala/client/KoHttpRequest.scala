@@ -80,8 +80,8 @@ object KoHttpRequest:
 
   /** Methods to manipulate the request */
   trait UnderlyingOp[F[_]: Concurrent, Self <: UnderlyingOp[F, Self]]:
-    def underlying: Request[F]
-    def withUnderlying(req: Request[F]): Self
+    protected def underlying: Request[F]
+    protected def withUnderlying(req: Request[F]): Self
 
     def mapRequest(f: Request[F] => Request[F]): Self = withUnderlying(f(underlying))
     def evalMapRequest(f: Request[F] => F[Request[F]]): F[Self] = f(underlying).map(withUnderlying)
