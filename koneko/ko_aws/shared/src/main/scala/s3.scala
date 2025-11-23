@@ -172,6 +172,11 @@ package object s3:
         Name: String,
         CreationDate: String, // timestamp (doc 2019-12-11T23:32:47+00:00, actual 2024-11-13T14:52:58.000Z)
         BucketRegion: Option[String],
+
+        // https://docs.aws.amazon.com/AmazonS3/latest/API/API_Bucket.html
+        // the doc says "This parameter is only supported for S3 directory buckets"
+        // but it is returned for a general purpose bucket as of 2025-11
+        BucketArn: Option[String],
       )
       object Bucket:
         def parser[F[_]: Sync](head: StartTag): Parser[F, Bucket] =
@@ -179,8 +184,9 @@ package object s3:
             Name         <- textNonEmptyOnlyTag[F]("Name")
             CreationDate <- textNonEmptyOnlyTag[F]("CreationDate")
             BucketRegion <- textOnlyTagOpt[F]("BucketRegion") // present when Request.`bucket-region` is present
+            BucketArn <- textOnlyTagOpt[F]("BucketArn")
             _            <- expect[F](EndTag(head.name))
-          yield Bucket(Name, CreationDate, BucketRegion)
+          yield Bucket(Name, CreationDate, BucketRegion, BucketArn)
 
   object ListBuckets:
     def apply[F[_]: Async](profile: Aws.Profile[F])(http: KoHttpClient[F, ?])(req: Request,
