@@ -53,4 +53,3 @@ trait AwsSuite extends KoCatsEffectSuite:
     val chunkSize = 1024
     Stream.iterable(Iterable.range(0L, len, chunkSize.toLong)).flatMap: i =>
       Stream.emits(rand.nextBytes(min((len - i).toInt, chunkSize)))
-
