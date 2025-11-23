@@ -18,9 +18,8 @@ This is an amalgamation of my code that could be reusable.
 
 1. Java 25 and [sbt](https://www.scala-sbt.org/)
 
-    1. [Coursier](https://get-coursier.io/) and
-       [Corretto](https://aws.amazon.com/corretto/)
-       can be used to setup a shell, for example
+    1. With [Coursier](https://get-coursier.io/),
+       a shell environment can be setup with, for example, [Corretto](https://aws.amazon.com/corretto/)
 
            # set JAVA_HOME and PATH
            # optionally downloading the Java version if not already installed

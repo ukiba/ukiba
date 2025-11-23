@@ -18,9 +18,9 @@
 
 1. Java 25 と [sbt](https://www.scala-sbt.org/) ビルドツール
 
-    1. [Coursier](https://get-coursier.io/) と
-       [Corretto](https://aws.amazon.com/corretto/) で
-       シェル環境を準備する例
+    1. [Coursier](https://get-coursier.io/) で
+       [Corretto](https://aws.amazon.com/corretto/) の
+       シェル環境を設定する例
 
            eval $(cs java --jvm corretto:25 --env)
 
