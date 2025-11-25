@@ -322,7 +322,6 @@ object KoHttpRequest:
     /** body */
     def body: Stream[F, Byte] = underlying.body
 
-    def withBody(body: Stream[F, Byte]): Self = withUnderlying(underlying.withBodyStream(body))
     def mapBody(func: Stream[F, Byte] => Stream[F, Byte]): Self = withBody(func(body))
 
     /** Sets the body with accompanying header */
@@ -334,6 +333,9 @@ object KoHttpRequest:
     def withBody(body: Array[Byte]): Self = withBody[Array[Byte]](body)(using EntityEncoder.byteArrayEncoder)
     def withBody(body: String): Self = withBody[String](body)(using EntityEncoder.stringEncoder)
     def withBody(body: Array[Char]): Self = withBody[Array[Char]](body)(using EntityEncoder.charArrayEncoder)
+
+    /** Without Content-Length, Transfer-Encoding */
+    def withBodyStream(body: Stream[F, Byte]): Self = withUnderlying(underlying.withBodyStream(body))
 
     def withBody(form: UrlForm): Self = withBody[UrlForm](form)(using UrlForm.entityEncoder)
     def withUrlForm(pairs: (String, String)*): Self = withBody(UrlForm(pairs*))
