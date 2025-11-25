@@ -44,6 +44,5 @@ class ObjectTests extends AwsSuite:
           _ <- assertStreamsEquals(respBody, contentStream(256 * 1024, 1))
         yield ()
 
-      logs <- showLogged(_ => true)
-      //_ = println(logs.mkString("\n"))
+      logged <- printLoggedDebug
     yield ()

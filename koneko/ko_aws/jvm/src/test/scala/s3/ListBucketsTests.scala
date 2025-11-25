@@ -16,6 +16,7 @@ class ListBucketsTests extends AwsSuite:
     test("none"):
       for
         resp <- ListBuckets(profile)(http)(ListBuckets.Request())
+        logged <- printLoggedDebug
       yield
         println(s"resp = $resp")
         //println(s"  buckets = ${resp.Buckets.toList.mkString("\n            ")}")
