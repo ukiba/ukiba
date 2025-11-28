@@ -16,7 +16,7 @@
 
 ## ビルド環境
 
-1. Java 25 と [sbt](https://www.scala-sbt.org/) ビルドツール
+1. Java 25 LTS と [sbt](https://www.scala-sbt.org/) ビルドツール
 
     1. [Coursier](https://get-coursier.io/) で
        [Corretto](https://aws.amazon.com/corretto/) の
@@ -35,6 +35,23 @@
                    Should we add ~\AppData\Local\Coursier\data\bin to your PATH? [Y/n] Y
 
                 1. インストール後、環境変数を反映させるために一度サインオフ (または再起動) する必要があります
+
+1. Node.js 24 LTS
+
+    1. Mac: [Homebrew](https://brew.sh/) でインストールする例
+
+           brew install node@24
+
+           # If the current version of node (v25) is also installed,
+           # this will make the LTS version the default
+           brew unlink node
+           brew link --overwrite node@24
+
+           # after this, those hard wired to the current version still get it
+           #   /opt/homebrew/bin/node           # node v24 (default in PATH)
+           #   /opt/homebrew/opt/node/bin/node  # node v25
+           # The next command would show if emscripten still uses the hard wired version
+           #   EMCC_DEBUG=1 emcc 2>&1 | grep -i node
 
 
 # ビルド手順
