@@ -4,9 +4,9 @@
 
 |名称                   |役割|
 |-----------------------|----|
-|`jvm/`                 |Java 実行環境用のプログラム|
-|`js/`                  |JavaScript 実行環境用のプログラム|
-|`shared/`              |実行環境に依存しないプログラム|
+|`jvm/`                 |Java 実行環境用の実装|
+|`js/`                  |JavaScript 実行環境用の実装|
+|`shared/`              |API と実行環境に依存しない実装|
 |`koneko/`              |[cats](https://github.com/typelevel/cats) に依存するライブラリ|
 |`koinu/`               |[Scala](https://www.scala-lang.org/) ライブラリ|
 |`build.sbt`, `project/`|ビルド用スクリプト|
@@ -26,7 +26,7 @@
 
         1. 上記コマンドの実行前に Coursier をセットアップする必要があります
             1. Coursier をセットアップすると `java` と `sbt` もインストールされます
-            1. [Windows で Coursier をセットアップ](https://get-coursier.io/docs/cli-installation#windows) するには
+            1. Windows: [Coursier をセットアップ](https://get-coursier.io/docs/cli-installation#windows) するには
 
                    curl -OL --fail https://github.com/coursier/launchers/raw/master/cs-x86_64-pc-win32.zip
                    tar xf cs-x86_64-pc-win32.zip
@@ -41,17 +41,19 @@
     1. Mac: [Homebrew](https://brew.sh/) でインストールする例
 
            brew install node@24
+           brew link --overwrite --force node@24
 
-           # If the current version of node (v25) is also installed,
-           # this will make the LTS version the default
-           brew unlink node
-           brew link --overwrite node@24
+        1. この手順では current バージョン (v25) がインストールされてても LTS バージョンがデフォルトになります。
 
-           # after this, those hard wired to the current version still get it
-           #   /opt/homebrew/bin/node           # node v24 (default in PATH)
-           #   /opt/homebrew/opt/node/bin/node  # node v25
-           # The next command would show if emscripten still uses the hard wired version
-           #   EMCC_DEBUG=1 emcc 2>&1 | grep -i node
+            1. current バージョンがインストール済みの場合、
+               current に依存しているプログラムは current バージョンを使い続けます。
+
+                   /opt/homebrew/bin/node           # node v24 (default in PATH)
+                   /opt/homebrew/opt/node/bin/node  # node v25 (always the unversioned one if exists)
+
+                1. 例えば次のコマンドで emscripten が current バージョンを使うことを確認できます
+
+                       EMCC_DEBUG=1 emcc 2>&1 | grep -i node
 
 
 # ビルド手順

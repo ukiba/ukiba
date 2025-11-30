@@ -1,12 +1,12 @@
-This is an amalgamation of my code that could be reusable.
+A collection of my code that could be reusable.
 
 # The directory layout
 
 |Name                   |Role|
 |-----------------------|----|
-|`jvm/`                 |Programs for a Java virtual machine|
-|`js/`                  |Programs for a JavaScript runtime, including the browser|
-|`shared/`              |Programs that do not depend on the runtime|
+|`jvm/`                 |Implementations for a Java virtual machine|
+|`js/`                  |Implementations for a JavaScript runtime, including the browser|
+|`shared/`              |API and Implementations that do not depend on the runtime|
 |`koneko/`              |Libraries that depend on [cats](https://github.com/typelevel/cats)|
 |`koinu/`               |[Scala](https://www.scala-lang.org/) libraries|
 |`build.sbt`, `project/`|The build scripts|
@@ -27,20 +27,23 @@ This is an amalgamation of my code that could be reusable.
 
 1. Node.js 24 LTS
 
-    1. Mac: With [Homebrew](https://brew.sh/)
+    1. Mac: To install with [Homebrew](https://brew.sh/)
 
            brew install node@24
+           brew link --overwrite --force node@24
 
-           # If the current version of node (v25) is also installed,
-           # this will make the LTS version the default
-           brew unlink node
-           brew link --overwrite node@24
+        1. This will make the LTS version the default,
+           even if the current version of node (v25) is also installed.
 
-           # after this, those hard wired to the current version still get it
-           #   /opt/homebrew/bin/node           # node v24 (default in PATH)
-           #   /opt/homebrew/opt/node/bin/node  # node v25
-           # The next command would show if emscripten still uses the hard wired version
-           #   EMCC_DEBUG=1 emcc 2>&1 | grep -i node
+            1. When the current version had been installed,
+               those hard wired to the current version still use it, since
+
+                   /opt/homebrew/bin/node           # node v24 (default in PATH)
+                   /opt/homebrew/opt/node/bin/node  # node v25 (always the unversioned one if exists)
+
+                1. For example, the next would show if emscripten still uses the current version
+
+                       EMCC_DEBUG=1 emcc 2>&1 | grep -i node
 
 
 # The builds
