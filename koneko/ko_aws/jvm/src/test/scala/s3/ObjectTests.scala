@@ -5,6 +5,7 @@ package s3
 import jp.ukiba.koneko.ko_http4s.client.KoHttpClient
 
 import org.http4s.headers.`Content-Length`
+import org.http4s.Entity
 import fs2.Stream
 import org.typelevel.log4cats.{Logger, LoggerFactory}
 import cats.effect.syntax.all.*
@@ -28,8 +29,8 @@ class ObjectTests extends AwsSuite:
       head1 <- HeadObject(profile)(http)(HeadObject.Request(bucket, "random-256k"))
       _ = assert(!head1.exists)
 
-      put2 <- PutObject(profile)(http)(PutObject.Request(bucket, "random-256k", contentStream(256 * 1024, 1),
-          `Content-Length` = Some(`Content-Length`(256 * 1024))))
+      put2 <- PutObject(profile)(http)(PutObject.Request(bucket, "random-256k",
+          Entity.stream(contentStream(256 * 1024, 1), Some(256 * 1024))))
 
       head2 <- HeadObject(profile)(http)(HeadObject.Request(bucket, "random-256k"))
       _ = assert(head2.exists)

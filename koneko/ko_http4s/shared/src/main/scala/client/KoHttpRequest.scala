@@ -6,7 +6,7 @@ import org.http4s.{Request, Method, HttpVersion}
 import org.http4s.Uri, Uri.{Scheme, Authority, UserInfo, Host, RegName, Path, Fragment}
 import org.http4s.{Query, QueryParam, QueryParamKeyLike, QueryParamEncoder}
 import org.http4s.{Headers, Header, Credentials, AuthScheme, BasicCredentials}
-import org.http4s.{EntityDecoder, EntityEncoder, MediaType, UrlForm}
+import org.http4s.{Entity, EntityDecoder, EntityEncoder, MediaType, UrlForm}
 import org.http4s.headers.{Accept, Authorization, `Content-Type`}
 import org.http4s.multipart.Multipart
 import fs2.Stream
@@ -323,6 +323,9 @@ object KoHttpRequest:
     def body: Stream[F, Byte] = underlying.body
 
     def mapBody(func: Stream[F, Byte] => Stream[F, Byte]): Self = withBody(func(body))
+
+    def withBody(body: Entity[F]): Self =
+        withUnderlying(underlying.withEntity(body))
 
     /** Sets the body with accompanying header */
     def withBody[A](body: A)(using encoder: EntityEncoder[F, A]): Self =

@@ -4,7 +4,7 @@ package ko_aws
 import jp.ukiba.koneko.ko_http4s.client.KoHttpClient
 import jp.ukiba.koneko.ko_fs2.xml.{XmlParser, XmlTextTrimmer, XmlEventLog}
 
-import org.http4s.{Uri, QueryParamEncoder, Header, Headers, Status, MediaType}
+import org.http4s.{Uri, QueryParamEncoder, Header, Headers, Status, MediaType, Entity}
 import org.http4s.headers.{ETag, `Accept-Ranges`, `Content-Range`, `Range`, `Content-Type`,
                           `Content-Disposition`, `Content-Encoding`, `Content-Language`, `Content-Length`,
                           `Last-Modified`, `Cache-Control`, `Expires`,
@@ -365,10 +365,11 @@ package object s3:
         dontRepeatWithContinuationToken: Boolean = false)
         (using log: Logger[F]): F[Response] =
       import profile.{credentials, region}
-      require(req.`Content-Length`.nonEmpty, "the payload length must be known") // even when streaming chunks
+      require(req.content.length.nonEmpty, "Content-Length must be provided, to avoid Transfer-Encoding: chunked") // required unless AWS’s SigV4 streaming is implemented (Content-Encoding: aws-chunked + x-amz-content-sha256: STREAMING-AWS4-HMAC-SHA256-PAYLOAD)
       for
         http <- http.withUri(profile.endpointUriOfS3(req.bucket)).PUT(req.key)
           .withBody(req.content)
+          .withHeader(`Content-Length`(req.content.length.get)) // http4s 1.0.0-M46: With Entity.Stream, Content-Length is not present
           .withHeaderOpt(req.`Cache-Control`      .map(_.toRaw1))
           .withHeaderOpt(req.`Content-Disposition`.map(_.toRaw1))
           .withHeaderOpt(req.`Content-Encoding`   .map(_.toRaw1))
@@ -403,7 +404,7 @@ package object s3:
     case class Request[F[_]](
       bucket               : String,
       key                  : String,
-      content              : Stream[F, Byte],
+      content              : Entity[F],
       `Cache-Control`      : Option[`Cache-Control`      ] = None, // propagates to GET, HEAD, CloudFront, ...
       `Content-Disposition`: Option[`Content-Disposition`] = None, // propagates to GET, HEAD, CloudFront, ...
       `Content-Encoding`   : Option[`Content-Encoding`   ] = None, // propagates to GET, HEAD, CloudFront, ...
