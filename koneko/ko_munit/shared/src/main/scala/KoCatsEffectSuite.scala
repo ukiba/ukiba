@@ -28,8 +28,9 @@ trait KoCatsEffectSuite extends CatsEffectSuite with KoTestSuite:
       logged <- showLogged(pred)
     yield
       println(s"logged (${logged.size})")
-      for (logged <- logged)
-        println(s"  $logged")
+      for logged <- logged do
+        for line <- logged.linesIterator do
+          println(s"  $line")
       logged
 
   def printLoggedDebug(using testLogFac: TestingLoggerFactory[F]): F[Seq[String]] =
