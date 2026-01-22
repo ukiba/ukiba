@@ -14,6 +14,16 @@ package object ko_java:
     def utf8 : Array[Byte] = str.getBytes(UTF_8)
     def utf16: Array[Byte] = str.getBytes(UTF_16) // Java native encoding
 
+    /** [startsWith] that ignores case as [equalsIgnoreCase] */
+    def startsWithIgnoreCase(prefix: String): Boolean =
+      str.length >= prefix.length &&
+          str.regionMatches(/*ignoreCase =*/ true, 0, prefix, 0, prefix.length)
+
+    /** [endsWith] that ignores case as [equalsIgnoreCase] */
+    def endsWithIgnoreCase(suffix: String): Boolean =
+      str.length >= suffix.length &&
+          str.regionMatches(/*ignoreCase =*/ true, str.length - suffix.length, suffix, 0, suffix.length)
+
     def countRight(pred: Char => Boolean): Int =
       @tailrec def loop(count: Int, lastIndex: Int): Int =
         if (lastIndex >= 0 && pred(str(lastIndex)))
