@@ -11,15 +11,17 @@ class ListBucketsTests extends AwsSuite:
   given log: Logger[F] = LoggerFactory[F].getLogger
 
   def http = KoHttpClient(client)
+      .transformLogConf(_.copy(160, 160, false, 160, 160, false))
 
   nest("params"):
     test("none"):
       for
         resp <- ListBuckets(profile)(http)(ListBuckets.Request())
-        logged <- printLoggedDebug
+            .attemptTap(_ => printLoggedDebug) // TODO: do this in other places too
+              
       yield
-        println(s"resp = $resp")
-        //println(s"  buckets = ${resp.Buckets.toList.mkString("\n            ")}")
+        //println(s"resp = $resp")
+        println(s"  buckets = ${resp.Buckets.toList.mkString("\n            ")}")
 
     test("bucket-region"):
       for

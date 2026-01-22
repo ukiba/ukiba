@@ -43,20 +43,27 @@ case class KoHttpClient[F[_]: Temporal, A](
 
   /** Performs an HTTP method */
   def run(using Logger[F]): KoHttpResponse[F, A] =
-    val resp = for {
-      _         <- Resource.eval(logReq(logConf)(req.underlying))
-      beginTime <- Resource.eval(Temporal[F].realTime)
-      resp      <- client.run(req.underlying)
-      endTime   <- Resource.eval(Temporal[F].realTime)
-      _         <- Resource.eval(logResp(logConf)(resp, endTime - beginTime, req.underlying))
-    } yield resp
+    val resp = for
+      reqWithLog  <- Resource.eval(logReq(logConf)(req.underlying))
+      beginTime   <- Resource.eval(Temporal[F].realTime)
+
+      // the response is available “after the header has been parsed" "but before the body has been fully received”
+      // https://http4s.org/v1/docs/entity.html
+      resp        <- client.run(reqWithLog)
+
+      endTime     <- Resource.eval(Temporal[F].realTime)
+      respWithLog <- Resource.eval(logResp(logConf)(resp, endTime - beginTime, req.underlying))
+    yield respWithLog
 
     KoHttpResponse(resp, req)
+
+  def transformLogConf(f: KoHttpLog.Conf => KoHttpLog.Conf): KoHttpClient[F, A] =
+    copy(logConf = f(logConf))
 
 object KoHttpClient:
   def apply[F[_]: Temporal](
     client: Client[F],
-    logConf: KoHttpLog.Conf = KoHttpLog.Conf.Min,
+    logConf: KoHttpLog.Conf = KoHttpLog.Conf(),
   ): KoHttpClient[F, ByteVector] = KoHttpClient(client, KoHttpRequest[F], logConf)
 
   /** To be given to RetryPolicy */

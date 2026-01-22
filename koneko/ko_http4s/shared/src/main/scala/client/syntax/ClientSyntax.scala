@@ -9,5 +9,5 @@ import cats.effect.{Temporal, Resource}
 
 trait ClientSyntax:
   extension [F[_]: Temporal](client: Client[F])
-    def run[A](req: KoHttpRequest[F, A], logConf: KoHttpLog.Conf = KoHttpLog.Conf.Min)
+    def run[A](req: KoHttpRequest[F, A], logConf: KoHttpLog.Conf = KoHttpLog.Conf())
         (using Logger[F]): KoHttpResponse[F, A] = KoHttpClient(client, req, logConf).run
