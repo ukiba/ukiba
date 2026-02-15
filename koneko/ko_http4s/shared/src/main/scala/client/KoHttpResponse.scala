@@ -21,7 +21,7 @@ case class KoHttpResponse[F[_]: Concurrent, A]( // EntityDecoder.text requires C
 
   def expectSuccess: Self = expectStatus(_.responseClass == Status.Successful)
 
-  def expectStatus(predicate: Status => Boolean): Self = copy(resource = resource.evalMap {
+  def expectStatus(predicate: Status => Boolean): Self = copy(resource = resource.evalMap:
     case resp if predicate(resp.status) => resp.pure[F]
     case resp =>
         for {
@@ -29,16 +29,11 @@ case class KoHttpResponse[F[_]: Concurrent, A]( // EntityDecoder.text requires C
           unexpectedStatus = UnexpectedStatus(resp.status, req.method, req.uri)
           _ <- Concurrent[F].raiseError(UnexpectedStatusAndEntity(unexpectedStatus, entity))
         } yield resp
-  })
-
-  def decode: F[Decoded[F, A]] = resource.use: resp =>
-    req.decoder.decode(resp, req.decodeStrict).value.flatMap: either =>
-      either match
-        case Right(body) => Decoded(body, resp).pure[F]
-        case Left(decodeFailure) => Concurrent[F].raiseError(decodeFailure)
+  )
 
   /** A combination of `expectSuccess` and `decode` */
-  def decodeSuccess: F[Decoded[F, A]] = expectSuccess.decode
+  def decodeSuccess: F[Decoded[F, A]] = expectSuccess.resource.use: resp =>
+    decode(resp, req)
 
 object KoHttpResponse:
   /** A decoded HTTP response. */
@@ -46,6 +41,12 @@ object KoHttpResponse:
     body: B,
     resp: Response[F], // holds headers
   )
+
+  def decode[F[_]: Concurrent, A](resp: Response[F], req: KoHttpRequest[F, A]): F[Decoded[F, A]] =
+    req.decoder.decode(resp, req.decodeStrict).value.flatMap: either =>
+      either match
+        case Right(body) => Decoded(body, resp).pure[F]
+        case Left(decodeFailure) => Concurrent[F].raiseError(decodeFailure)
 
   /* org.http4s.client.UnexpectedStatus doesn't have the message */
   // https://github.com/http4s/http4s/blob/v1.0.0-M40/client/shared/src/main/scala/org/http4s/client/Client.scala#L339

@@ -3,7 +3,7 @@ ThisBuild / organization := "jp.ukiba"
 
 // The default settings
 // Defining `ThisBuild / scalaVersion` avoids sbt-updates 0.6.3 to report update for scala-library
-ThisBuild / scalaVersion := "3.8.0-RC6"
+ThisBuild / scalaVersion := "3.8.1"
 ThisBuild / scalacOptions ++= Seq(
   "-preview", // https://www.scala-lang.org/api/current/docs/docs/reference/preview/better-fors.html
 
@@ -51,14 +51,6 @@ lazy val commonSettings = Seq(
   ),
 )
 
-lazy val buildInfoSettings = Seq(
-  buildInfoKeys := Seq[BuildInfoKey](version),
-  buildInfoOptions ++= Seq(
-    BuildInfoOption.BuildTime,
-    BuildInfoOption.Traits("jp.ukiba.koinu.build.SbtBuildInfo"),
-  )
-)
-
 val npmInstall = taskKey[File]("populate node_modules directory")
 
 lazy val ukiba = crossProject(JSPlatform, JVMPlatform).in(file("build/ukiba"))
@@ -103,9 +95,9 @@ lazy val ko_aws = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_aws")
     buildInfoPackage := "jp.ukiba.koneko.ko_aws",
 
     libraryDependencies ++= Seq(
-      "software.amazon.awssdk" % "auth"     % "2.40.10",
-      "software.amazon.awssdk" % "sso"      % "2.40.10", // avoid `To use Sso related properties in the '...' profile, the 'sso' service module must be on the class path.`
-      "software.amazon.awssdk" % "ssooidc"  % "2.40.10", // avoid `To use SSO OIDC related properties in the '...' profile, the 'ssooidc' service module must be on the class path.`
+      "software.amazon.awssdk" % "auth"     % "2.41.29",
+      "software.amazon.awssdk" % "sso"      % "2.41.29", // avoid `To use Sso related properties in the '...' profile, the 'sso' service module must be on the class path.`
+      "software.amazon.awssdk" % "ssooidc"  % "2.41.29", // avoid `To use SSO OIDC related properties in the '...' profile, the 'ssooidc' service module must be on the class path.`
       "org.http4s" %%% "http4s-ember-client" % "1.0.0-M46" % Test,
     ),
   )
@@ -360,6 +352,26 @@ lazy val tools = project.in(file("build/ukiba"))
       dir
     },
   )
+
+lazy val srcModTimeString = taskKey[String]("Max lastModified of unmanaged sources + resources")
+import java.time.{Instant, ZoneId}
+
+lazy val buildInfoSettings = Seq(
+  Compile / buildInfoKeys ++= Seq[BuildInfoKey](
+    version,
+    Compile / srcModTimeString,
+  ),
+  Compile / buildInfoOptions ++= Seq(
+    BuildInfoOption.Traits("jp.ukiba.koinu.build.SbtBuildInfo"),
+    BuildInfoOption.ConstantValue,
+    // BuildInfoOption.BuildTime forces to regenerate BuildInfo.scala every time
+  ),
+  Compile / srcModTimeString := {
+    val files = (Compile / unmanagedSources).value ++ (Compile / unmanagedResources).value
+    val maxLastModified = files.foldLeft(0L)((acc, file) => acc.max(file.lastModified))
+    Instant.ofEpochMilli(maxLastModified).atZone(ZoneId.systemDefault).toOffsetDateTime.toString
+  },
+)
 
 // Customize sbt
 Global / onChangedBuildSource := ReloadOnSourceChanges // reload build.sbt automatically
