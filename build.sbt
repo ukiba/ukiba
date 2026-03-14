@@ -239,7 +239,7 @@ lazy val ko_munit = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_mun
 
     libraryDependencies ++= Seq(
       "org.scalameta" %%% "munit" % "1.2.4",
-      "org.typelevel" %%% "munit-cats-effect" % "2.1.0", // TODO 2.1.0 depends on cats-effect 3.6.0
+      "org.typelevel" %%% "munit-cats-effect" % "2.2.0", // TODO 2.1.0 depends on cats-effect 3.6.0
       "org.typelevel" %%% "log4cats-testing" % "2.8.0",
     ),
   )
