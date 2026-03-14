@@ -204,7 +204,7 @@ lazy val ko_fs2 = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_fs2")
     buildInfoPackage := "jp.ukiba.koneko.ko_fs2",
 
     libraryDependencies ++= Seq(
-      "co.fs2" %%% "fs2-io" % "3.12.2",
+      "co.fs2" %%% "fs2-io" % "3.13.0",
     ),
   )
   .jsSettings(
