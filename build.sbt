@@ -220,7 +220,7 @@ lazy val ko_cats_effect = crossProject(JSPlatform, JVMPlatform).in(file("koneko/
     buildInfoPackage := "jp.ukiba.koneko.ko_cats_effect",
 
     libraryDependencies ++= Seq(
-      "org.typelevel" %%% "cats-effect" % "3.6.3",
+      "org.typelevel" %%% "cats-effect" % "3.7.0",
       "org.typelevel" %%% "log4cats-core" % "2.8.0", // there are alternative logging libraries
     ),
   )
