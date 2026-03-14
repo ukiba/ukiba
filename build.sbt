@@ -3,7 +3,7 @@ ThisBuild / organization := "jp.ukiba"
 
 // The default settings
 // Defining `ThisBuild / scalaVersion` avoids sbt-updates 0.6.3 to report update for scala-library
-ThisBuild / scalaVersion := "3.8.1"
+ThisBuild / scalaVersion := "3.8.2"
 ThisBuild / scalacOptions ++= Seq(
   "-preview", // https://www.scala-lang.org/api/current/docs/docs/reference/preview/better-fors.html
 
@@ -27,7 +27,7 @@ inThisBuild(Seq( // apply to every project in the build
 // https://www.scala-sbt.org/1.x/docs/Multi-Project.html
 lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
-    "org.typelevel" %% "log4cats-slf4j" % "2.7.1"               % Test, // depends on slf4j-api 1.7.36
+    "org.typelevel" %% "log4cats-slf4j" % "2.8.0"               % Test, // depends on slf4j-api 1.7.36
     "org.apache.logging.log4j" % "log4j-slf4j2-impl" % "2.25.3" % Test, // depends on slf4j-api 2.0.17
     "org.slf4j" % "slf4j-api" % "2.0.17"                        % Test, // slf4j-2 is binary compatible with slf4j-1
   ),
@@ -95,9 +95,9 @@ lazy val ko_aws = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_aws")
     buildInfoPackage := "jp.ukiba.koneko.ko_aws",
 
     libraryDependencies ++= Seq(
-      "software.amazon.awssdk" % "auth"     % "2.41.29",
-      "software.amazon.awssdk" % "sso"      % "2.41.29", // avoid `To use Sso related properties in the '...' profile, the 'sso' service module must be on the class path.`
-      "software.amazon.awssdk" % "ssooidc"  % "2.41.29", // avoid `To use SSO OIDC related properties in the '...' profile, the 'ssooidc' service module must be on the class path.`
+      "software.amazon.awssdk" % "auth"     % "2.42.11",
+      "software.amazon.awssdk" % "sso"      % "2.42.11", // avoid `To use Sso related properties in the '...' profile, the 'sso' service module must be on the class path.`
+      "software.amazon.awssdk" % "ssooidc"  % "2.42.11", // avoid `To use SSO OIDC related properties in the '...' profile, the 'ssooidc' service module must be on the class path.`
       "org.http4s" %%% "http4s-ember-client" % "1.0.0-M46" % Test,
     ),
   )
@@ -221,7 +221,7 @@ lazy val ko_cats_effect = crossProject(JSPlatform, JVMPlatform).in(file("koneko/
 
     libraryDependencies ++= Seq(
       "org.typelevel" %%% "cats-effect" % "3.6.3",
-      "org.typelevel" %%% "log4cats-core" % "2.7.1", // there are alternative logging libraries
+      "org.typelevel" %%% "log4cats-core" % "2.8.0", // there are alternative logging libraries
     ),
   )
   .jsSettings(
@@ -240,7 +240,7 @@ lazy val ko_munit = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_mun
     libraryDependencies ++= Seq(
       "org.scalameta" %%% "munit" % "1.2.1",
       "org.typelevel" %%% "munit-cats-effect" % "2.1.0", // TODO 2.1.0 depends on cats-effect 3.6.0
-      "org.typelevel" %%% "log4cats-testing" % "2.7.1",
+      "org.typelevel" %%% "log4cats-testing" % "2.8.0",
     ),
   )
   .jsSettings(

@@ -218,7 +218,7 @@ trait Base32 {
 object Base32 extends Base32:
   /** RFC 4648 Table 3 */
   override def encode(value: Int) = value match
-    case value if value < 0 => throw new MatchError(value)
+    case value if value <  0 => throw MatchError(value)
     case value if value < 26 => ('A' + value).toByte
     case value if value < 32 => ('2' + (value - 26)).toByte
 
@@ -230,7 +230,7 @@ object Base32 extends Base32:
   object ExtendedHex extends Base32:
     /** RFC 4648 Table 4 */
     override def encode(value: Int) = value match
-      case value if value < 0 => throw new MatchError(value)
+      case value if value <  0 => throw MatchError(value)
       case value if value < 10 => ('0' + value).toByte
       case value if value < 32 => ('A' + (value - 10)).toByte
 

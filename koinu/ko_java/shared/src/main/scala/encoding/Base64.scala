@@ -156,36 +156,36 @@ trait Base64 {
 object Base64 extends Base64:
   /** RFC 4648 Table 1 */
   override def encode(value: Int) = value match
-    case value if value < 0 => throw new MatchError(value)
+    case value if value <  0 => throw MatchError(value)
     case value if value < 26 => ('A' + value).toByte
     case value if value < 52 => ('a' + (value - 26)).toByte
     case value if value < 62 => ('0' + (value - 52)).toByte
-    case 62 => '+'
-    case 63 => '/'
+    case 62                  => '+'
+    case 63                  => '/'
 
   /** Reverse table */
   override def decode(ch: Char) = ch match
     case ch if ch >= 'A' && ch <= 'Z' => ch - 'A'
     case ch if ch >= 'a' && ch <= 'z' => ch - 'a' + 26
     case ch if ch >= '0' && ch <= '9' => ch - '0' + 52
-    case '+' => 62
-    case '/' => 63
+    case '+'                          => 62
+    case '/'                          => 63
 
   /** URL and Filename safe */
   object UrlSafe extends Base64:
     /** RFC 4648 Table 2 */
     override def encode(value: Int) = value match
-      case value if value < 0 => throw new MatchError(value)
+      case value if value <  0 => throw MatchError(value)
       case value if value < 26 => ('A' + value).toByte
       case value if value < 52 => ('a' + (value - 26)).toByte
       case value if value < 62 => ('0' + (value - 52)).toByte
-      case 62 => '-' // minus
-      case 63 => '_' // underline
+      case 62                  => '-' // minus
+      case 63                  => '_' // underline
 
     /** Reverse table */
     override def decode(ch: Char) = ch match
       case ch if ch >= 'A' && ch <= 'Z' => ch - 'A'
       case ch if ch >= 'a' && ch <= 'z' => ch - 'a' + 26
       case ch if ch >= '0' && ch <= '9' => ch - '0' + 52
-      case '-' => 62 // minus
-      case '_' => 63 // underline
+      case '-'                          => 62 // minus
+      case '_'                          => 63 // underline
