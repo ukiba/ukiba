@@ -2,9 +2,14 @@ package jp.ukiba.koinu.ko_java
 package encoding
 
 import java.nio.charset.{Charset, StandardCharsets, UnsupportedCharsetException},
-    StandardCharsets.{UTF_8, UTF_16BE, UTF_16LE, UTF_32BE, UTF_32LE}
+    StandardCharsets.{UTF_8, UTF_16BE, UTF_16LE/*, UTF_32BE, UTF_32LE*/}
 
 object XmlEncodingSniffer:
+  // StandardCharsets.{UTF_32BE, UTF_32LE} are only available since Java 22
+  // the following should work since at least Java 6
+  val UTF_32BE = Charset.forName("UTF-32BE")
+  val UTF_32LE = Charset.forName("UTF-32LE")
+
   // FIXME
   def extractEncoding(bytes: Array[Byte], maxScanBytes: Int = 4096): Option[String] = None
 
