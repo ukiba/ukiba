@@ -16,6 +16,17 @@ ThisBuild / scalacOptions ++= Seq(
   "-encoding", "UTF-8",
 )
 
+ThisBuild / javaOptions ++= Seq(
+  /*
+    Java 25 の以下の出力を回避:
+      WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+      WARNING: sun.misc.Unsafe::objectFieldOffset has been called by scala.runtime.LazyVals$ (file:/Users/kenichi/seiko/KDLite/app-web/target/bg-jobs/sbt_964d35bc/target/d8e47722/1769033826000/scala-library-3.8.1.jar)
+      WARNING: Please consider reporting this to the maintainers of class scala.runtime.LazyVals$
+      WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+  */
+  "--sun-misc-unsafe-memory-access=allow",
+)
+
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.scalaJSModuleKind
 import org.scalajs.linker.interface.ModuleKind
 inThisBuild(Seq( // apply to every project in the build
@@ -28,7 +39,7 @@ inThisBuild(Seq( // apply to every project in the build
 lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
     "org.typelevel" %% "log4cats-slf4j" % "2.8.0"               % Test, // depends on slf4j-api 1.7.36
-    "org.apache.logging.log4j" % "log4j-slf4j2-impl" % "2.25.3" % Test, // depends on slf4j-api 2.0.17
+    "org.apache.logging.log4j" % "log4j-slf4j2-impl" % "2.25.4" % Test, // depends on slf4j-api 2.0.17
     "org.slf4j" % "slf4j-api" % "2.0.17"                        % Test, // slf4j-2 is binary compatible with slf4j-1
   ),
 
@@ -38,16 +49,6 @@ lazy val commonSettings = Seq(
   Test / fork := true,
   Test / javaOptions ++= Seq(
     "-Dcats.effect.tracing.buffer.size=8192", // the default 16 would not capture the entire stack trace
-
-    /*
-      Aviod the warnings on Java 25
-
-          WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
-          WARNING: sun.misc.Unsafe::objectFieldOffset has been called by scala.runtime.LazyVals$ (file:/Users/kenichi/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/3.8.0-RC1/scala-library-3.8.0-RC1.jar)
-          WARNING: Please consider reporting this to the maintainers of class scala.runtime.LazyVals$
-          WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
-    */
-    "--sun-misc-unsafe-memory-access=allow",
   ),
 )
 
@@ -95,9 +96,9 @@ lazy val ko_aws = crossProject(JSPlatform, JVMPlatform).in(file("koneko/ko_aws")
     buildInfoPackage := "jp.ukiba.koneko.ko_aws",
 
     libraryDependencies ++= Seq(
-      "software.amazon.awssdk" % "auth"     % "2.42.11",
-      "software.amazon.awssdk" % "sso"      % "2.42.11", // avoid `To use Sso related properties in the '...' profile, the 'sso' service module must be on the class path.`
-      "software.amazon.awssdk" % "ssooidc"  % "2.42.11", // avoid `To use SSO OIDC related properties in the '...' profile, the 'ssooidc' service module must be on the class path.`
+      "software.amazon.awssdk" % "auth"     % "2.42.31",
+      "software.amazon.awssdk" % "sso"      % "2.42.31", // avoid `To use Sso related properties in the '...' profile, the 'sso' service module must be on the class path.`
+      "software.amazon.awssdk" % "ssooidc"  % "2.42.31", // avoid `To use SSO OIDC related properties in the '...' profile, the 'ssooidc' service module must be on the class path.`
       "org.http4s" %%% "http4s-ember-client" % "1.0.0-M46" % Test,
     ),
   )

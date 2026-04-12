@@ -21,6 +21,8 @@ import java.time.{ZonedDateTime, ZoneId}
 import java.util.{GregorianCalendar, Calendar}
 import java.nio.file.{Path, Files}
 
+import scodec.bits.ByteVector
+
 /** Attaches / detaches files */
 class PdfEmbeddedFile:
   import PdfEmbeddedFile.*
@@ -165,9 +167,9 @@ class PdfEmbeddedFile:
       extract(doc, callback)
     .get // throws exception
 
-  def extract(in: InputStream, password: Option[String], callback: EmbeddedFile => Unit): Unit =
+  def extract(bin: ByteVector, password: Option[String], callback: EmbeddedFile => Unit): Unit =
     Using.Manager: use =>
-      val inRead = use(RandomAccessReadBuffer(in))
+      val inRead = use(ByteVectorRandomAccessRead(bin))
       val doc    = use(Loader.loadPDF(inRead, password.getOrElse("")))
       extract(doc, callback)
     .get // throws exception

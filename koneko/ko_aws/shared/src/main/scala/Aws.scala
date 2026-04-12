@@ -136,7 +136,7 @@ object Aws:
 
     private inline def firstStringOf(fns: () => Option[String]*): Option[String] =
       // collectFirst can be used with Function.unlift that converts fn to PartialFunction but it calls fn twice
-      fns.iterator.flatMap(fn => fn()).nextOption // lazily find the first Some
+      fns.iterator.flatMap(fn => fn()).nextOption()  // lazily find the first Some
 
     private inline def firstBooleanOf(fns: () => Option[String]*): Boolean =
       fns.iterator.flatMap:fn =>
@@ -144,7 +144,7 @@ object Aws:
           case "true"  => true
           case "false" => false
           case str     => throw IllegalArgumentException(s"Unexpected Boolean: $str; must be true or false")
-      .nextOption.getOrElse(false)
+      .nextOption().getOrElse(false)
 
   /** RFC 3986 URI Unreserved Characters */
   def isUriUnreservedChar(ch: Char): Boolean = ch match
