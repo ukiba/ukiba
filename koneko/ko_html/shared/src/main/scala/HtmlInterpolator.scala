@@ -44,7 +44,7 @@ object HtmlInterpolator:
   def interleaveArgs(parts: Seq[String]): String =
     @tailrec def loop(partsInit: Iterator[(String, Int)], partsLast: String, sb: StringBuilder): String =
       if partsInit.hasNext then
-        val (part, index) = partsInit.next
+        val (part, index) = partsInit.next()
         sb ++= part
         sb += (ArgCharMin + index).toChar
         loop(partsInit, partsLast, sb)

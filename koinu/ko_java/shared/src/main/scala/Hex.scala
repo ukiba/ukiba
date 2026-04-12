@@ -154,7 +154,7 @@ object Hex:
       override def fillBuf(buf: Array[Byte]) =
         var len = 0
         while len < 16 && in.hasNext do
-          buf(len) = in.next
+          buf(len) = in.next()
           len += 1
         len
 
